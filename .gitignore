@@ -1,0 +1,24 @@
+*.iml
+.DS_Store
+
+# Local machine and IDE state
+.gradle/
+.idea/
+.kotlin/
+local.properties
+
+# Build outputs
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Release/signing files must stay local
+*.apk
+*.aab
+*.apks
+*.jks
+*.keystore
+keystore.properties
+signing.properties
