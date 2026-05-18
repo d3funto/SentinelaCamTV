@@ -2,6 +2,7 @@ package com.sentinela.camtv.ui.cameras
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -16,17 +21,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.sentinela.camtv.ui.common.BodyText
-import com.sentinela.camtv.ui.common.ScreenTitle
 import com.sentinela.camtv.ui.common.SectionTitle
 import com.sentinela.camtv.ui.common.SentinelaScreen
 import com.sentinela.onvif.DiscoveredOnvifDevice
@@ -35,6 +43,12 @@ import com.sentinela.onvif.DiscoveredOnvifDevice
 fun CameraManagerScreen(
     state: CameraManagerUiState,
     onDiscoverOnvif: () -> Unit,
+    onSelectOnvifDevice: (String) -> Unit,
+    onManualOnvifAddressChanged: (String) -> Unit,
+    onUseManualOnvifAddress: () -> Unit,
+    onUsernameChanged: (String) -> Unit,
+    onPasswordChanged: (String) -> Unit,
+    onSaveSelectedOnvifCamera: () -> Unit,
     onDismissAuthDialog: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -48,10 +62,9 @@ fun CameraManagerScreen(
 
     SentinelaScreen {
         Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            ScreenTitle("Gerenciar câmeras")
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Top,
@@ -60,20 +73,45 @@ fun CameraManagerScreen(
                     modifier = Modifier.width(430.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SectionTitle("Ações")
                     CameraManagerActionButton(
                         label = if (state.scanning) "Procurando ONVIF..." else "Buscar ONVIF na rede",
                         onClick = onDiscoverOnvif,
-                        enabled = !state.scanning,
+                        enabled = !state.busy,
                         modifier = Modifier.focusRequester(focusRequester),
                     )
                     CameraManagerActionButton(
-                        label = "Voltar",
-                        onClick = onBack,
+                        label = if (state.saving) "Salvando câmera ONVIF..." else "Salvar ONVIF selecionada",
+                        onClick = onSaveSelectedOnvifCamera,
+                        enabled = !state.busy && state.selectedDevice != null,
+                    )
+                    CameraManagerActionButton(
+                        label = "Usar endereço informado",
+                        onClick = onUseManualOnvifAddress,
+                        enabled = !state.busy,
                     )
 
                     SectionTitle("Status")
                     BodyText(state.statusMessage ?: "Pronto")
+
+                    SectionTitle("Endereço ONVIF manual")
+                    CameraManagerTextField(
+                        label = "IP ou URL do serviço ONVIF",
+                        value = state.manualOnvifAddress,
+                        onValueChange = onManualOnvifAddressChanged,
+                    )
+
+                    SectionTitle("Credenciais ONVIF")
+                    CameraManagerTextField(
+                        label = "Usuário",
+                        value = state.username,
+                        onValueChange = onUsernameChanged,
+                    )
+                    CameraManagerTextField(
+                        label = "Senha",
+                        value = state.password,
+                        onValueChange = onPasswordChanged,
+                        password = true,
+                    )
                 }
 
                 Column(
@@ -88,8 +126,16 @@ fun CameraManagerScreen(
 
                     SectionTitle("Dispositivos ONVIF")
                     BodyText("${state.discoveredDevices.size} encontrado(s)")
-                    state.discoveredDevices.take(4).forEach { device ->
-                        BodyText(device.displayLabel())
+                    state.discoveredDevices.take(6).forEach { device ->
+                        CameraManagerActionButton(
+                            label = if (state.selectedDeviceKey == device.stableKey()) {
+                                "Selecionado: ${device.displayLabel()}"
+                            } else {
+                                device.displayLabel()
+                            },
+                            onClick = { onSelectOnvifDevice(device.stableKey()) },
+                            enabled = !state.busy,
+                        )
                     }
                 }
             }
@@ -102,6 +148,48 @@ fun CameraManagerScreen(
                 modifier = Modifier.align(Alignment.Center),
             )
         }
+    }
+}
+
+@Composable
+private fun CameraManagerTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    password: Boolean = false,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (password) KeyboardType.Password else KeyboardType.Text,
+            ),
+            visualTransformation = if (password) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        )
     }
 }
 
@@ -164,13 +252,6 @@ private fun AuthErrorDialog(
         }
     }
 }
-
-private fun DiscoveredOnvifDevice.displayLabel(): String =
-    scopes.firstOrNull()
-        ?.substringAfterLast('/')
-        ?.takeIf { it.isNotBlank() }
-        ?: xAddrs.firstOrNull()
-        ?: endpointReference
 
 private fun Key.isConfirmKey(): Boolean =
     this == Key.DirectionCenter ||

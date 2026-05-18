@@ -30,4 +30,23 @@ class OnvifXmlBuilderTest {
         assertTrue(xml.contains("RTSP"))
         assertFalse(xml.contains("password"))
     }
+
+    @Test
+    fun authenticatedRequestsUseUsernameTokenWithoutPlainPassword() {
+        val token = OnvifUsernameToken(
+            username = "test-user",
+            passwordDigest = "digest-value",
+            nonceBase64 = "nonce-value",
+            created = "2026-05-18T10:00:00Z",
+        )
+
+        val xml = OnvifXmlBuilder.getProfiles(token)
+
+        assertTrue(xml.contains("UsernameToken"))
+        assertTrue(xml.contains("test-user"))
+        assertTrue(xml.contains("digest-value"))
+        assertTrue(xml.contains("nonce-value"))
+        assertTrue(xml.contains("2026-05-18T10:00:00Z"))
+        assertFalse(xml.contains("test-password"))
+    }
 }

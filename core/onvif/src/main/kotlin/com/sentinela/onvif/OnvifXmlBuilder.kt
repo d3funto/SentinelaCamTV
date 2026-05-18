@@ -23,8 +23,9 @@ object OnvifXmlBuilder {
         </e:Envelope>
         """.trimIndent()
 
-    fun getCapabilities(): String =
+    fun getCapabilities(usernameToken: OnvifUsernameToken? = null): String =
         soapBody(
+            usernameToken = usernameToken,
             body = """
             <tds:GetCapabilities xmlns:tds="http://www.onvif.org/ver10/device/wsdl">
                 <tds:Category>All</tds:Category>
@@ -32,15 +33,20 @@ object OnvifXmlBuilder {
             """.trimIndent(),
         )
 
-    fun getProfiles(): String =
+    fun getProfiles(usernameToken: OnvifUsernameToken? = null): String =
         soapBody(
+            usernameToken = usernameToken,
             body = """
             <trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl" />
             """.trimIndent(),
         )
 
-    fun getStreamUri(profileToken: String): String =
+    fun getStreamUri(
+        profileToken: String,
+        usernameToken: OnvifUsernameToken? = null,
+    ): String =
         soapBody(
+            usernameToken = usernameToken,
             body = """
             <trt:GetStreamUri xmlns:trt="http://www.onvif.org/ver10/media/wsdl">
                 <trt:StreamSetup>
@@ -49,18 +55,49 @@ object OnvifXmlBuilder {
                         <tt:Protocol>RTSP</tt:Protocol>
                     </tt:Transport>
                 </trt:StreamSetup>
-                <trt:ProfileToken>$profileToken</trt:ProfileToken>
+                <trt:ProfileToken>${profileToken.xmlEscaped()}</trt:ProfileToken>
             </trt:GetStreamUri>
             """.trimIndent(),
         )
 
-    private fun soapBody(body: String): String =
+    private fun soapBody(
+        body: String,
+        usernameToken: OnvifUsernameToken?,
+    ): String {
+        val header = usernameToken?.let(::securityHeader).orEmpty()
+        return """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
+                $header
+                <s:Body>
+                    $body
+                </s:Body>
+            </s:Envelope>
+            """.trimIndent()
+    }
+
+    private fun securityHeader(usernameToken: OnvifUsernameToken): String =
         """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">
-            <s:Body>
-                $body
-            </s:Body>
-        </s:Envelope>
+        <s:Header>
+            <wsse:Security
+                xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+                xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+                <wsse:UsernameToken>
+                    <wsse:Username>${usernameToken.username.xmlEscaped()}</wsse:Username>
+                    <wsse:Password
+                        Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${usernameToken.passwordDigest}</wsse:Password>
+                    <wsse:Nonce
+                        EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">${usernameToken.nonceBase64}</wsse:Nonce>
+                    <wsu:Created>${usernameToken.created}</wsu:Created>
+                </wsse:UsernameToken>
+            </wsse:Security>
+        </s:Header>
         """.trimIndent()
+
+    private fun String.xmlEscaped(): String =
+        replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
 }

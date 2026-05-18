@@ -8,20 +8,28 @@ import java.net.URL
 class OnvifSoapClient(
     private val connectTimeoutMillis: Int = 5_000,
     private val readTimeoutMillis: Int = 5_000,
+    private val usernameTokenFactory: OnvifUsernameTokenFactory = OnvifUsernameTokenFactory(),
 ) {
-    fun getCapabilities(deviceServiceUrl: String): Result<OnvifCapabilities> =
-        post(deviceServiceUrl, OnvifXmlBuilder.getCapabilities())
+    fun getCapabilities(
+        deviceServiceUrl: String,
+        credentials: OnvifCredentials? = null,
+    ): Result<OnvifCapabilities> =
+        post(deviceServiceUrl, OnvifXmlBuilder.getCapabilities(credentials.usernameToken()))
             .mapCatching { xml -> OnvifXmlParser.parseCapabilities(xml) }
 
-    fun getProfiles(mediaServiceUrl: String): Result<List<OnvifMediaProfile>> =
-        post(mediaServiceUrl, OnvifXmlBuilder.getProfiles())
+    fun getProfiles(
+        mediaServiceUrl: String,
+        credentials: OnvifCredentials? = null,
+    ): Result<List<OnvifMediaProfile>> =
+        post(mediaServiceUrl, OnvifXmlBuilder.getProfiles(credentials.usernameToken()))
             .mapCatching { xml -> OnvifXmlParser.parseProfiles(xml) }
 
     fun getStreamUri(
         mediaServiceUrl: String,
         profileToken: String,
+        credentials: OnvifCredentials? = null,
     ): Result<OnvifStreamUri> =
-        post(mediaServiceUrl, OnvifXmlBuilder.getStreamUri(profileToken))
+        post(mediaServiceUrl, OnvifXmlBuilder.getStreamUri(profileToken, credentials.usernameToken()))
             .mapCatching { xml -> OnvifXmlParser.parseStreamUri(xml) }
 
     private fun post(
@@ -57,4 +65,7 @@ class OnvifSoapClient(
             else -> throw error
         }
     }
+
+    private fun OnvifCredentials?.usernameToken(): OnvifUsernameToken? =
+        this?.takeIf { it.isConfigured }?.let(usernameTokenFactory::create)
 }

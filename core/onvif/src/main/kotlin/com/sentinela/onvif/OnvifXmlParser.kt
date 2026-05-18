@@ -62,12 +62,21 @@ object OnvifXmlParser {
     private fun String.toDocument(): Document {
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            safeSetFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            safeSetFeature("http://xml.org/sax/features/external-general-entities", false)
+            safeSetFeature("http://xml.org/sax/features/external-parameter-entities", false)
+            safeSetFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            runCatching { isXIncludeAware = false }
+            runCatching { isExpandEntityReferences = false }
         }
         return factory.newDocumentBuilder().parse(ByteArrayInputStream(toByteArray()))
+    }
+
+    private fun DocumentBuilderFactory.safeSetFeature(
+        name: String,
+        value: Boolean,
+    ) {
+        runCatching { setFeature(name, value) }
     }
 
     private fun Document.elements(localName: String): List<Element> =

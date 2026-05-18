@@ -67,6 +67,12 @@ fun SentinelaAppScreen() {
             CameraManagerScreen(
                 state = cameraManagerState,
                 onDiscoverOnvif = cameraManagerViewModel::discoverOnvifDevices,
+                onSelectOnvifDevice = cameraManagerViewModel::selectDiscoveredDevice,
+                onManualOnvifAddressChanged = cameraManagerViewModel::updateManualOnvifAddress,
+                onUseManualOnvifAddress = cameraManagerViewModel::useManualOnvifAddress,
+                onUsernameChanged = cameraManagerViewModel::updateUsername,
+                onPasswordChanged = cameraManagerViewModel::updatePassword,
+                onSaveSelectedOnvifCamera = cameraManagerViewModel::saveSelectedOnvifCamera,
                 onDismissAuthDialog = cameraManagerViewModel::dismissAuthDialog,
                 onBack = appViewModel::goBack,
             )

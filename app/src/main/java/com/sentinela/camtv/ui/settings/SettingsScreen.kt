@@ -23,7 +23,6 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.sentinela.camtv.ui.common.BodyText
-import com.sentinela.camtv.ui.common.ScreenTitle
 import com.sentinela.camtv.ui.common.SectionTitle
 import com.sentinela.camtv.ui.common.SentinelaScreen
 import com.sentinela.camtv.ui.labels.activationLabel
@@ -54,8 +53,6 @@ fun SettingsScreen(
         Column(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            ScreenTitle("Ajustes")
-
             Row(
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Top,

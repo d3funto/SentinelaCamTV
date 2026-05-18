@@ -2,6 +2,7 @@ package com.sentinela.camtv.data.onvif
 
 import com.sentinela.onvif.DiscoveredOnvifDevice
 import com.sentinela.onvif.OnvifCapabilities
+import com.sentinela.onvif.OnvifCredentials
 import com.sentinela.onvif.OnvifMediaProfile
 import com.sentinela.onvif.OnvifSoapClient
 import com.sentinela.onvif.OnvifStreamUri
@@ -20,21 +21,28 @@ class DefaultOnvifRepository(
             runCatching { wsDiscoveryClient.discover() }
         }
 
-    override suspend fun getCapabilities(deviceServiceUrl: String): Result<OnvifCapabilities> =
+    override suspend fun getCapabilities(
+        deviceServiceUrl: String,
+        credentials: OnvifCredentials?,
+    ): Result<OnvifCapabilities> =
         withContext(ioDispatcher) {
-            soapClient.getCapabilities(deviceServiceUrl)
+            soapClient.getCapabilities(deviceServiceUrl, credentials)
         }
 
-    override suspend fun getProfiles(mediaServiceUrl: String): Result<List<OnvifMediaProfile>> =
+    override suspend fun getProfiles(
+        mediaServiceUrl: String,
+        credentials: OnvifCredentials?,
+    ): Result<List<OnvifMediaProfile>> =
         withContext(ioDispatcher) {
-            soapClient.getProfiles(mediaServiceUrl)
+            soapClient.getProfiles(mediaServiceUrl, credentials)
         }
 
     override suspend fun getStreamUri(
         mediaServiceUrl: String,
         profileToken: String,
+        credentials: OnvifCredentials?,
     ): Result<OnvifStreamUri> =
         withContext(ioDispatcher) {
-            soapClient.getStreamUri(mediaServiceUrl, profileToken)
+            soapClient.getStreamUri(mediaServiceUrl, profileToken, credentials)
         }
 }
