@@ -1,6 +1,5 @@
 package com.sentinela.camtv.ui.home
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -67,30 +66,6 @@ fun HomeScreen(
 
             Button(onClick = onOpenSettings) {
                 Text("Ajustes")
-            }
-        }
-    }
-}
-
-@Composable
-fun CamerasPlaceholderScreen(
-    onBack: () -> Unit,
-) {
-    BackHandler(onBack = onBack)
-
-    SentinelaScreen(
-        contentAlignment = Alignment.Center,
-        horizontalPadding = 48.dp,
-        verticalPadding = 48.dp,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ScreenTitle("Câmeras")
-            BodyText("Cadastro de câmeras será implementado em uma etapa futura.")
-            Button(onClick = onBack) {
-                Text("Voltar")
             }
         }
     }

@@ -24,39 +24,50 @@ data class AppUiState(
 class AppViewModel(
     private val cameraRepository: CameraRepository,
 ) : ViewModel() {
+    private val navigator = AppNavigator()
     private val _state = MutableStateFlow(AppUiState())
     val state: StateFlow<AppUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
             val hasCameras = cameraRepository.hasEnabledCameras()
-            _state.value = AppUiState(
-                destination = if (hasCameras) AppDestination.Mosaic else AppDestination.Home,
-                hasCameras = hasCameras,
-            )
+            navigator.initialize(hasCameras)
+            publishNavigationState()
         }
         viewModelScope.launch {
             cameraRepository.observeEnabledCameras().collect { cameras ->
-                _state.value = _state.value.copy(hasCameras = cameras.isNotEmpty())
+                navigator.setCameraAvailability(cameras.isNotEmpty())
+                publishNavigationState()
             }
         }
     }
 
     fun openHome() {
-        _state.value = _state.value.copy(destination = AppDestination.Home)
+        navigator.openHome()
+        publishNavigationState()
     }
 
     fun openMosaic() {
-        if (_state.value.hasCameras) {
-            _state.value = _state.value.copy(destination = AppDestination.Mosaic)
-        }
+        navigator.openMosaic()
+        publishNavigationState()
     }
 
     fun openCameras() {
-        _state.value = _state.value.copy(destination = AppDestination.Cameras)
+        navigator.openCameras()
+        publishNavigationState()
     }
 
     fun openSettings() {
-        _state.value = _state.value.copy(destination = AppDestination.Settings)
+        navigator.openSettings()
+        publishNavigationState()
+    }
+
+    fun goBack() {
+        navigator.goBack()
+        publishNavigationState()
+    }
+
+    private fun publishNavigationState() {
+        _state.value = navigator.state
     }
 }

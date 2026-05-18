@@ -9,14 +9,20 @@ import org.junit.Test
 class UiLabelsTest {
     @Test
     fun audioLabelsUseActivationPattern() {
-        assertEquals("Áudio: ativado", audioLabel(AudioMode.Enabled))
-        assertEquals("Áudio: desativado", audioLabel(AudioMode.Disabled))
+        assertEquals("Áudio: Ativado", audioLabel(AudioMode.Enabled))
+        assertEquals("Áudio: Desativado", audioLabel(AudioMode.Disabled))
     }
 
     @Test
     fun informationLabelsUseActivationPattern() {
-        assertEquals("ativadas", activationLabel(true))
-        assertEquals("desativadas", activationLabel(false))
+        assertEquals("Ativadas", activationLabel(true))
+        assertEquals("Desativadas", activationLabel(false))
+    }
+
+    @Test
+    fun statusLabelsUseActivationPattern() {
+        assertEquals("Ativado", statusLabel(true))
+        assertEquals("Desativado", statusLabel(false))
     }
 
     @Test

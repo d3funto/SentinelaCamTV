@@ -27,6 +27,7 @@ import com.sentinela.camtv.ui.common.ScreenTitle
 import com.sentinela.camtv.ui.common.SectionTitle
 import com.sentinela.camtv.ui.common.SentinelaScreen
 import com.sentinela.camtv.ui.labels.activationLabel
+import com.sentinela.camtv.ui.labels.statusLabel
 import com.sentinela.camtv.ui.labels.transmissionModeLabel
 
 @Composable
@@ -74,7 +75,7 @@ fun SettingsScreen(
                         onClick = onToggleFullscreenInfo,
                     )
                     SettingsActionButton(
-                        label = "Áudio na tela cheia: ${settingsStatusLabel(state.preferences.fullscreenAudioEnabled)}",
+                        label = "Áudio na tela cheia: ${statusLabel(state.preferences.fullscreenAudioEnabled)}",
                         onClick = onToggleFullscreenAudio,
                     )
                     SettingsActionButton(
@@ -82,7 +83,7 @@ fun SettingsScreen(
                         onClick = onToggleTransmissionMode,
                     )
                     SettingsActionButton(
-                        label = "Iniciar ao ligar TV/Box: ${settingsStatusLabel(state.preferences.autoStartOnBoot)}",
+                        label = "Iniciar ao ligar TV/Box: ${statusLabel(state.preferences.autoStartOnBoot)}",
                         onClick = onToggleAutoStartOnBoot,
                     )
                 }
@@ -144,9 +145,6 @@ private fun SettingsActionButton(
         )
     }
 }
-
-private fun settingsStatusLabel(enabled: Boolean): String =
-    if (enabled) "ativado" else "desativado"
 
 private fun Key.isConfirmKey(): Boolean =
     this == Key.DirectionCenter ||

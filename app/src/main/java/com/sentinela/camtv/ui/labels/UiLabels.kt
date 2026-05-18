@@ -5,11 +5,14 @@ import com.sentinela.camtv.player.TransmissionMode
 import com.sentinela.camtv.ui.player.StreamQuality
 
 fun activationLabel(active: Boolean): String =
-    if (active) "ativadas" else "desativadas"
+    if (active) "Ativadas" else "Desativadas"
+
+fun statusLabel(active: Boolean): String =
+    if (active) "Ativado" else "Desativado"
 
 fun audioLabel(audioMode: AudioMode): String = when (audioMode) {
-    AudioMode.Enabled -> "Áudio: ativado"
-    AudioMode.Disabled -> "Áudio: desativado"
+    AudioMode.Enabled -> "Áudio: Ativado"
+    AudioMode.Disabled -> "Áudio: Desativado"
 }
 
 fun streamQualityLabel(streamQuality: StreamQuality): String = when (streamQuality) {

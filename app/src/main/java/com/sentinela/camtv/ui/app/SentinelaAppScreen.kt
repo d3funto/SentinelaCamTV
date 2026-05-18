@@ -68,7 +68,7 @@ fun SentinelaAppScreen() {
                 state = cameraManagerState,
                 onDiscoverOnvif = cameraManagerViewModel::discoverOnvifDevices,
                 onDismissAuthDialog = cameraManagerViewModel::dismissAuthDialog,
-                onBack = appViewModel::openHome,
+                onBack = appViewModel::goBack,
             )
         }
         AppDestination.Settings -> {
@@ -84,7 +84,7 @@ fun SentinelaAppScreen() {
                 onExportSupportLogs = settingsViewModel::exportSupportLogs,
                 onExportCrashReport = settingsViewModel::exportCrashReport,
                 onOpenHome = appViewModel::openHome,
-                onBack = appViewModel::openHome,
+                onBack = appViewModel::goBack,
             )
         }
     }

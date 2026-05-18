@@ -1,31 +1,32 @@
 # Sentinela Cam TV
 
-Sentinela Cam TV e um aplicativo open-source para visualizar cameras de seguranca em Android TV e Google TV.
+Sentinela Cam TV é um aplicativo open-source para visualizar câmeras de segurança em Android TV e Google TV.
 
-O projeto esta em desenvolvimento inicial. A prioridade atual e um mosaico leve para dispositivos modestos, especialmente o Izy Play com Android TV 10, 1 GB de RAM e saida 1080p. O app tambem deve funcionar em Google TV mais recentes, mas o alvo principal de performance e o hardware mais limitado.
+O projeto está em desenvolvimento inicial. A prioridade atual é um mosaico leve para dispositivos modestos, especialmente o Izy Play com Android TV 10, 1 GB de RAM e saída 1080p. O app também deve funcionar em Google TV mais recentes, mas o alvo principal de performance é o hardware mais limitado.
 
-## Principios
+## Princípios
 
-- Sem anuncios.
+- Sem anúncios.
 - Sem rastreamento.
 - Sem analytics.
-- Sem conta obrigatoria.
-- Sem nuvem obrigatoria.
-- Codigo aberto sob `GPL-3.0-or-later`.
+- Sem conta obrigatória.
+- Sem nuvem obrigatória.
+- Código aberto sob `GPL-3.0-or-later`.
 - Otimizado primeiro para uso com controle remoto em Android TV / Google TV.
 
 ## Estado atual
 
-- Mosaico com 5 cameras.
+- Mosaico com 5 câmeras.
+- Tela cheia a partir do mosaico.
 - Reprodução RTSP usando AndroidX Media3/ExoPlayer.
-- Configuracao local de DVR Intelbras/MHDX via `local.properties`.
-- Estrutura inicial separada em `domain`, `player`, `config` e `ui.mosaic`.
+- Configuração local de DVR Intelbras/MHDX via `local.properties` em builds de desenvolvimento.
+- Estrutura inicial com `domain`, `player`, `preferences`, `data`, `ui`, Room, DataStore e um módulo ONVIF isolado.
 
-O ambiente real de teste principal usa um DVR Intelbras MHDX 1004 com cinco cameras Intelbras. Quatro cameras sao analogicas via DVR e uma camera e IP/ONVIF exposta pelo sistema.
+O ambiente real de teste principal usa um DVR Intelbras MHDX 1004 com cinco câmeras Intelbras. Quatro câmeras são analógicas via DVR e uma câmera é IP/ONVIF exposta pelo sistema.
 
-## Configuracao local
+## Configuração local
 
-As credenciais do DVR nao ficam no codigo-fonte. Para testar localmente, configure o arquivo `local.properties` na raiz do projeto:
+As credenciais do DVR não ficam no código-fonte. Para testar localmente, configure o arquivo `local.properties` na raiz do projeto:
 
 ```properties
 sdk.dir=C\:\\Users\\SEU_USUARIO\\AppData\\Local\\Android\\Sdk
@@ -36,25 +37,25 @@ sentinela.dvr.password=senha
 sentinela.dvr.rtspPort=554
 ```
 
-`local.properties` e ignorado pelo Git. Nao envie IPs internos, usuarios, senhas ou URLs RTSP reais para o repositorio.
+`local.properties` é ignorado pelo Git. Não envie IPs internos, usuários, senhas ou URLs RTSP reais para o repositório.
 
 ## Desenvolvimento
 
 Requisitos recomendados:
 
-- Android Studio estavel atual.
-- JDK incluido no Android Studio.
+- Android Studio estável atual.
+- JDK incluído no Android Studio.
 - Android SDK Platform 36 instalado.
-- Dispositivo Android TV/Google TV real para validacao.
+- Dispositivo Android TV/Google TV real para validação.
 
-Comandos uteis:
+Comandos úteis:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest
-.\gradlew.bat assembleDebug
+.\gradlew.bat :app:testDebugUnitTest --no-daemon --max-workers=1
+.\gradlew.bat :app:assembleDebug --no-daemon --max-workers=1
 ```
 
-No Windows, se o terminal nao encontrar Java, use temporariamente o JDK do Android Studio:
+No Windows, se o terminal não encontrar Java, use temporariamente o JDK do Android Studio:
 
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
@@ -64,6 +65,6 @@ $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
 
 Veja [PRIVACY.md](PRIVACY.md).
 
-## Licenca
+## Licença
 
-Sentinela Cam TV e software livre licenciado sob `GPL-3.0-or-later`. Veja [LICENSE](LICENSE).
+Sentinela Cam TV é software livre licenciado sob `GPL-3.0-or-later`. Veja [LICENSE](LICENSE).
