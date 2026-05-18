@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sentinela.camtv.BuildConfig
 import com.sentinela.camtv.logging.LogRepository
-import com.sentinela.camtv.player.TransmissionMode
 import com.sentinela.camtv.player.next
 import com.sentinela.camtv.preferences.PlayerUiPreferences
 import com.sentinela.camtv.preferences.SettingsRepository
@@ -71,12 +70,6 @@ class SettingsViewModel(
     fun toggleTransmissionMode() {
         viewModelScope.launch {
             settingsRepository.setGlobalTransmissionMode(state.value.preferences.globalTransmissionMode.next())
-        }
-    }
-
-    fun setTransmissionMode(transmissionMode: TransmissionMode) {
-        viewModelScope.launch {
-            settingsRepository.setGlobalTransmissionMode(transmissionMode)
         }
     }
 

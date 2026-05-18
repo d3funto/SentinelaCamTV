@@ -1,14 +1,10 @@
 package com.sentinela.camtv.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,9 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.sentinela.camtv.ui.common.BodyText
+import com.sentinela.camtv.ui.common.ScreenTitle
+import com.sentinela.camtv.ui.common.SectionTitle
+import com.sentinela.camtv.ui.common.SentinelaScreen
 import com.sentinela.camtv.ui.labels.activationLabel
 import com.sentinela.camtv.ui.labels.transmissionModeLabel
-import com.sentinela.camtv.ui.theme.SentinelaBackground
 
 @Composable
 fun SettingsScreen(
@@ -40,6 +39,7 @@ fun SettingsScreen(
     onToggleAutoStartOnBoot: () -> Unit,
     onExportSupportLogs: () -> Unit,
     onExportCrashReport: () -> Unit,
+    onOpenHome: () -> Unit,
     onBack: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -49,21 +49,11 @@ fun SettingsScreen(
         focusRequester.requestFocus()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SentinelaBackground)
-            .padding(horizontal = 56.dp, vertical = 40.dp),
-        contentAlignment = Alignment.TopStart,
-    ) {
+    SentinelaScreen {
         Column(
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
-            Text(
-                text = "Ajustes",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            ScreenTitle("Ajustes")
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
@@ -73,7 +63,7 @@ fun SettingsScreen(
                     modifier = Modifier.width(430.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SettingsSectionTitle("Reprodução")
+                    SectionTitle("Reprodução")
                     SettingsActionButton(
                         label = "Informações no mosaico: ${activationLabel(state.preferences.showMosaicInfo)}",
                         onClick = onToggleMosaicInfo,
@@ -101,7 +91,7 @@ fun SettingsScreen(
                     modifier = Modifier.width(430.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SettingsSectionTitle("Suporte")
+                    SectionTitle("Suporte")
                     SettingsActionButton(
                         label = "Exportar logs para suporte",
                         onClick = onExportSupportLogs,
@@ -111,17 +101,17 @@ fun SettingsScreen(
                         onClick = onExportCrashReport,
                     )
                     SettingsActionButton(
-                        label = "Voltar",
-                        onClick = onBack,
+                        label = "Ir para início",
+                        onClick = onOpenHome,
                     )
 
-                    SettingsSectionTitle("Sobre o app")
-                    StatusLine("Sentinela Cam TV ${state.versionName}")
-                    StatusLine(state.license)
-                    StatusLine(state.githubUrl)
+                    SectionTitle("Sobre o app")
+                    BodyText("Sentinela Cam TV ${state.versionName}")
+                    BodyText(state.license)
+                    BodyText(state.githubUrl)
 
                     state.exportMessage?.let { message ->
-                        StatusLine(message)
+                        BodyText(message)
                     }
                 }
             }
@@ -153,24 +143,6 @@ private fun SettingsActionButton(
             style = MaterialTheme.typography.titleMedium,
         )
     }
-}
-
-@Composable
-private fun SettingsSectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onBackground,
-    )
-}
-
-@Composable
-private fun StatusLine(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
-    )
 }
 
 private fun settingsStatusLabel(enabled: Boolean): String =

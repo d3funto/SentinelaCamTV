@@ -57,6 +57,7 @@ private const val CAMERA_FOCUS_HIDE_DELAY_MS = 5_000L
 @Composable
 fun MosaicScreen(
     viewModelFactory: ViewModelProvider.Factory,
+    onOpenHome: () -> Unit,
     onOpenSettings: () -> Unit,
     onExitApp: () -> Unit,
     dvrConfig: DvrConnectionConfig = AppDvrConfig.intelbrasMhdx1004,
@@ -113,6 +114,11 @@ fun MosaicScreen(
                 onToggleStreamQuality = fullscreenViewModel::toggleStreamQuality,
                 onToggleInfo = fullscreenViewModel::toggleInfo,
                 onToggleTransmissionMode = fullscreenViewModel::toggleTransmissionMode,
+                onOpenHome = {
+                    fullscreenViewModel.dismissQuickMenu()
+                    mosaicViewModel.closeFullscreen()
+                    onOpenHome()
+                },
                 onOpenSettings = {
                     fullscreenViewModel.dismissQuickMenu()
                     mosaicViewModel.closeFullscreen()
@@ -157,6 +163,10 @@ fun MosaicScreen(
                 onToggleInfo = mosaicViewModel::toggleInfo,
                 onStartReorder = mosaicViewModel::startReorderMode,
                 onToggleTransmissionMode = mosaicViewModel::toggleTransmissionMode,
+                onOpenHome = {
+                    mosaicViewModel.dismissQuickMenu()
+                    onOpenHome()
+                },
                 onOpenSettings = {
                     mosaicViewModel.dismissQuickMenu()
                     onOpenSettings()
@@ -170,11 +180,13 @@ fun MosaicScreen(
 @Composable
 fun SentinelaCamTvScreen(
     viewModelFactory: ViewModelProvider.Factory,
+    onOpenHome: () -> Unit,
     onOpenSettings: () -> Unit,
     onExitApp: () -> Unit,
 ) {
     MosaicScreen(
         viewModelFactory = viewModelFactory,
+        onOpenHome = onOpenHome,
         onOpenSettings = onOpenSettings,
         onExitApp = onExitApp,
     )
@@ -270,6 +282,7 @@ private fun MosaicQuickMenu(
     onToggleInfo: () -> Unit,
     onStartReorder: () -> Unit,
     onToggleTransmissionMode: () -> Unit,
+    onOpenHome: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -279,6 +292,7 @@ private fun MosaicQuickMenu(
             QuickMenuAction("Informações: ${activationLabel(state.showInfo)}", onToggleInfo),
             QuickMenuAction("Reorganizar mosaico", onStartReorder),
             QuickMenuAction(transmissionModeMenuLabel(state.transmissionMode), onToggleTransmissionMode),
+            QuickMenuAction("Ir para início", onOpenHome),
             QuickMenuAction("Ir para ajustes", onOpenSettings),
         ),
         modifier = modifier,

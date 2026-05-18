@@ -55,6 +55,7 @@ fun SentinelaAppScreen() {
         }
         AppDestination.Mosaic -> MosaicScreen(
             viewModelFactory = viewModelFactory,
+            onOpenHome = appViewModel::openHome,
             onOpenSettings = appViewModel::openSettings,
             onExitApp = {
                 activity?.finishAndRemoveTask() ?: activity?.finish()
@@ -66,6 +67,7 @@ fun SentinelaAppScreen() {
             CameraManagerScreen(
                 state = cameraManagerState,
                 onDiscoverOnvif = cameraManagerViewModel::discoverOnvifDevices,
+                onDismissAuthDialog = cameraManagerViewModel::dismissAuthDialog,
                 onBack = appViewModel::openHome,
             )
         }
@@ -81,6 +83,7 @@ fun SentinelaAppScreen() {
                 onToggleAutoStartOnBoot = settingsViewModel::toggleAutoStartOnBoot,
                 onExportSupportLogs = settingsViewModel::exportSupportLogs,
                 onExportCrashReport = settingsViewModel::exportCrashReport,
+                onOpenHome = appViewModel::openHome,
                 onBack = appViewModel::openHome,
             )
         }
