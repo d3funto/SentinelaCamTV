@@ -78,7 +78,6 @@ fun SentinelaAppScreen() {
                 onToggleFullscreenInfo = settingsViewModel::toggleFullscreenInfo,
                 onToggleFullscreenAudio = settingsViewModel::toggleFullscreenAudio,
                 onToggleTransmissionMode = settingsViewModel::toggleTransmissionMode,
-                onSetTransmissionMode = settingsViewModel::setTransmissionMode,
                 onToggleAutoStartOnBoot = settingsViewModel::toggleAutoStartOnBoot,
                 onExportSupportLogs = settingsViewModel::exportSupportLogs,
                 onExportCrashReport = settingsViewModel::exportCrashReport,

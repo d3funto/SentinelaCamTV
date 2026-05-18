@@ -2,14 +2,14 @@ package com.sentinela.camtv.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -17,12 +17,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Switch
 import androidx.tv.material3.Text
-import com.sentinela.camtv.player.TransmissionMode
+import com.sentinela.camtv.ui.labels.activationLabel
 import com.sentinela.camtv.ui.labels.transmissionModeLabel
 import com.sentinela.camtv.ui.theme.SentinelaBackground
 
@@ -33,7 +37,6 @@ fun SettingsScreen(
     onToggleFullscreenInfo: () -> Unit,
     onToggleFullscreenAudio: () -> Unit,
     onToggleTransmissionMode: () -> Unit,
-    onSetTransmissionMode: (TransmissionMode) -> Unit,
     onToggleAutoStartOnBoot: () -> Unit,
     onExportSupportLogs: () -> Unit,
     onExportCrashReport: () -> Unit,
@@ -51,106 +54,129 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(SentinelaBackground)
             .padding(horizontal = 56.dp, vertical = 40.dp),
-        contentAlignment = Alignment.CenterStart,
+        contentAlignment = Alignment.TopStart,
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             Text(
                 text = "Ajustes",
                 style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.onBackground,
             )
 
-            SettingsSwitchRow(
-                title = "Informações no mosaico",
-                checked = state.preferences.showMosaicInfo,
-                onClick = onToggleMosaicInfo,
-                modifier = Modifier.focusRequester(focusRequester),
-            )
-
-            SettingsSwitchRow(
-                title = "Informações na tela cheia",
-                checked = state.preferences.showFullscreenInfo,
-                onClick = onToggleFullscreenInfo,
-            )
-
-            SettingsSwitchRow(
-                title = "Áudio na tela cheia",
-                checked = state.preferences.fullscreenAudioEnabled,
-                onClick = onToggleFullscreenAudio,
-            )
-
-            SettingsSwitchRow(
-                title = "Iniciar ao ligar TV/Box",
-                checked = state.preferences.autoStartOnBoot,
-                onClick = onToggleAutoStartOnBoot,
-            )
-
-            Button(onClick = onToggleTransmissionMode) {
-                Text("Modo padrão: ${transmissionModeLabel(state.preferences.globalTransmissionMode)}")
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { onSetTransmissionMode(TransmissionMode.MENOR_LATENCIA) }) {
-                    Text("Menor latência")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(36.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.width(430.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SettingsSectionTitle("Reprodução")
+                    SettingsActionButton(
+                        label = "Informações no mosaico: ${activationLabel(state.preferences.showMosaicInfo)}",
+                        onClick = onToggleMosaicInfo,
+                        modifier = Modifier.focusRequester(focusRequester),
+                    )
+                    SettingsActionButton(
+                        label = "Informações na tela cheia: ${activationLabel(state.preferences.showFullscreenInfo)}",
+                        onClick = onToggleFullscreenInfo,
+                    )
+                    SettingsActionButton(
+                        label = "Áudio na tela cheia: ${settingsStatusLabel(state.preferences.fullscreenAudioEnabled)}",
+                        onClick = onToggleFullscreenAudio,
+                    )
+                    SettingsActionButton(
+                        label = "Modo padrão: ${transmissionModeLabel(state.preferences.globalTransmissionMode)}",
+                        onClick = onToggleTransmissionMode,
+                    )
+                    SettingsActionButton(
+                        label = "Iniciar ao ligar TV/Box: ${settingsStatusLabel(state.preferences.autoStartOnBoot)}",
+                        onClick = onToggleAutoStartOnBoot,
+                    )
                 }
-                Button(onClick = { onSetTransmissionMode(TransmissionMode.QUALIDADE) }) {
-                    Text("Qualidade")
+
+                Column(
+                    modifier = Modifier.width(430.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SettingsSectionTitle("Suporte")
+                    SettingsActionButton(
+                        label = "Exportar logs para suporte",
+                        onClick = onExportSupportLogs,
+                    )
+                    SettingsActionButton(
+                        label = "Exportar relatório de erros",
+                        onClick = onExportCrashReport,
+                    )
+                    SettingsActionButton(
+                        label = "Voltar",
+                        onClick = onBack,
+                    )
+
+                    SettingsSectionTitle("Sobre o app")
+                    StatusLine("Sentinela Cam TV ${state.versionName}")
+                    StatusLine(state.license)
+                    StatusLine(state.githubUrl)
+
+                    state.exportMessage?.let { message ->
+                        StatusLine(message)
+                    }
                 }
-            }
-
-            Button(onClick = onExportSupportLogs) {
-                Text("Exportar logs para suporte")
-            }
-
-            Button(onClick = onExportCrashReport) {
-                Text("Exportar relatório de erros")
-            }
-
-            Text(
-                text = "Sobre: Sentinela Cam TV ${state.versionName} | ${state.license}",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = state.githubUrl,
-                style = MaterialTheme.typography.titleMedium,
-            )
-
-            state.exportMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-
-            Button(onClick = onBack) {
-                Text("Voltar")
             }
         }
     }
 }
 
 @Composable
-private fun SettingsSwitchRow(
-    title: String,
-    checked: Boolean,
+private fun SettingsActionButton(
+    label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Button(
+        onClick = onClick,
         modifier = modifier
-            .clickable(onClick = onClick)
-            .focusable(),
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .fillMaxWidth()
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyUp && keyEvent.key.isConfirmKey()) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            },
     ) {
-        Switch(
-            checked = checked,
-            onCheckedChange = { onClick() },
-        )
         Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
         )
     }
 }
+
+@Composable
+private fun SettingsSectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+}
+
+@Composable
+private fun StatusLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+}
+
+private fun settingsStatusLabel(enabled: Boolean): String =
+    if (enabled) "ativado" else "desativado"
+
+private fun Key.isConfirmKey(): Boolean =
+    this == Key.DirectionCenter ||
+        this == Key.Enter ||
+        this == Key.NumPadEnter
