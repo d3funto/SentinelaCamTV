@@ -11,6 +11,7 @@ local.properties
 build/
 app/build/
 captures/
+artifacts/
 .externalNativeBuild/
 .cxx/
 

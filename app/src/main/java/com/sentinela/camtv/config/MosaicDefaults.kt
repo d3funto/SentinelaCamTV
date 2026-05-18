@@ -4,9 +4,8 @@ import com.sentinela.camtv.domain.Camera
 import com.sentinela.camtv.domain.IntelbrasDvrChannel
 
 const val MOSAIC_SUBTYPE = 1
+const val FULLSCREEN_SUBTYPE = 0
 
-const val SHOW_PLAYER_DEBUG_INFO = true
-const val SHOW_CAMERA_LABELS = true
 const val SHOW_APP_HEADER = false
 
 const val APP_PADDING_DP = 16

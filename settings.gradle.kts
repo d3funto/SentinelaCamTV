@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Sentinela Cam TV"
 include(":app")
+include(":core:onvif")
