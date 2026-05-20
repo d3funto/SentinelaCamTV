@@ -30,7 +30,7 @@ https://github.com/d3funto/SentinelaCamTV/releases/latest
 
 ## Estado do projeto
 
-O app está em desenvolvimento ativo. Algumas funções ainda podem mudar, e testes em diferentes modelos de TV Box são importantes.
+O app está em desenvolvimento ativo. Algumas funções ainda podem mudar, e o seu feedback é muito importante.
 
 No momento, o projeto está em desenvolvimento individual. Relatos de bugs são bem-vindos pelas Issues, mas contribuições de código ainda não estão abertas.
 
