@@ -78,7 +78,11 @@ fun MosaicScreen(
     var focusActivityToken by remember { mutableIntStateOf(0) }
 
     BackHandler {
-        mosaicViewModel.onBackPressed()
+        if (shouldReturnHomeOnMosaicBack(state)) {
+            onOpenHome()
+        } else {
+            mosaicViewModel.onBackPressed()
+        }
     }
 
     LaunchedEffect(focusActivityToken, showCameraFocusIndicator) {
@@ -221,32 +225,32 @@ private fun MosaicGrid(
     showFocusIndicator: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val rows = remember(state.cameras) { state.cameras.mosaicRows() }
     Column(
         modifier = modifier.padding(APP_PADDING_DP.dp),
         verticalArrangement = Arrangement.spacedBy(TILE_GAP_DP.dp),
     ) {
-        MosaicCameraRow(
-            cameras = state.cameras.take(3),
-            state = state,
-            rtspUrlBuilder = rtspUrlBuilder,
-            onCameraClick = onCameraClick,
-            onCameraLongClick = onCameraLongClick,
-            tilesFocusable = tilesFocusable,
-            showFocusIndicator = showFocusIndicator,
-            rowWeight = 1f,
-        )
-        MosaicCameraRow(
-            cameras = state.cameras.drop(3),
-            state = state,
-            rtspUrlBuilder = rtspUrlBuilder,
-            onCameraClick = onCameraClick,
-            onCameraLongClick = onCameraLongClick,
-            tilesFocusable = tilesFocusable,
-            showFocusIndicator = showFocusIndicator,
-            rowWeight = 1.15f,
-        )
+        rows.forEachIndexed { index, rowCameras ->
+            MosaicCameraRow(
+                cameras = rowCameras,
+                state = state,
+                rtspUrlBuilder = rtspUrlBuilder,
+                onCameraClick = onCameraClick,
+                onCameraLongClick = onCameraLongClick,
+                tilesFocusable = tilesFocusable,
+                showFocusIndicator = showFocusIndicator,
+                rowWeight = if (state.cameras.size <= 5 && index == 1) 1.15f else 1f,
+            )
+        }
     }
 }
+
+private fun List<Camera>.mosaicRows(): List<List<Camera>> =
+    if (size <= 5) {
+        listOf(take(3), drop(3)).filter { row -> row.isNotEmpty() }
+    } else {
+        chunked(4)
+    }
 
 @Composable
 private fun ColumnScope.MosaicCameraRow(

@@ -26,7 +26,10 @@ class DefaultOnvifRepository(
         credentials: OnvifCredentials?,
     ): Result<OnvifCapabilities> =
         withContext(ioDispatcher) {
-            soapClient.getCapabilities(deviceServiceUrl, credentials)
+            runCatching {
+                val endpoint = OnvifEndpointPolicy.requireAllowedEndpoint(deviceServiceUrl)
+                soapClient.getCapabilities(endpoint, credentials).getOrThrow()
+            }
         }
 
     override suspend fun getProfiles(
@@ -34,7 +37,10 @@ class DefaultOnvifRepository(
         credentials: OnvifCredentials?,
     ): Result<List<OnvifMediaProfile>> =
         withContext(ioDispatcher) {
-            soapClient.getProfiles(mediaServiceUrl, credentials)
+            runCatching {
+                val endpoint = OnvifEndpointPolicy.requireAllowedEndpoint(mediaServiceUrl)
+                soapClient.getProfiles(endpoint, credentials).getOrThrow()
+            }
         }
 
     override suspend fun getStreamUri(
@@ -43,6 +49,9 @@ class DefaultOnvifRepository(
         credentials: OnvifCredentials?,
     ): Result<OnvifStreamUri> =
         withContext(ioDispatcher) {
-            soapClient.getStreamUri(mediaServiceUrl, profileToken, credentials)
+            runCatching {
+                val endpoint = OnvifEndpointPolicy.requireAllowedEndpoint(mediaServiceUrl)
+                soapClient.getStreamUri(endpoint, profileToken, credentials).getOrThrow()
+            }
         }
 }

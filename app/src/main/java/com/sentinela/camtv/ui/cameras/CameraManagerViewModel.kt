@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.sentinela.camtv.data.camera.CameraRepository
 import com.sentinela.camtv.data.camera.RtspUrlSanitizer
 import com.sentinela.camtv.data.onvif.OnvifRepository
+import com.sentinela.camtv.data.onvif.OnvifCameraProfileSelection
 import com.sentinela.camtv.data.onvif.OnvifProfileSelector
+import com.sentinela.camtv.data.onvif.ResolvedOnvifProfile
 import com.sentinela.camtv.domain.Camera
 import com.sentinela.camtv.player.RtspConnectionTestResult
 import com.sentinela.camtv.player.RtspConnectionTester
@@ -200,33 +202,47 @@ class CameraManagerViewModel(
 
                 statusMessage.value = "Consultando perfis de mídia..."
                 val profiles = onvifRepository.getProfiles(mediaServiceUrl, credentials).getOrThrow()
-                val selection = OnvifProfileSelector.select(profiles)
-                    ?: error("Nenhum perfil de mídia ONVIF encontrado.")
-
-                statusMessage.value = "Obtendo URL RTSP principal..."
-                val mainStream = onvifRepository
-                    .getStreamUri(mediaServiceUrl, selection.main.token, credentials)
-                    .getOrThrow()
-                val subStream = selection.sub?.let { subProfile ->
-                    statusMessage.value = "Obtendo URL RTSP secundária..."
-                    onvifRepository
-                        .getStreamUri(mediaServiceUrl, subProfile.token, credentials)
-                        .getOrThrow()
+                if (profiles.isEmpty()) {
+                    error("Nenhum perfil de mídia ONVIF encontrado.")
                 }
 
-                cameraRepository.saveOnvifCamera(
-                    id = device.stableCameraId(),
-                    name = device.displayLabel(),
-                    endpoint = deviceServiceUrl,
-                    onvifDeviceServiceUrl = deviceServiceUrl,
-                    mainRtspUrl = mainStream.uri,
-                    subRtspUrl = subStream?.uri,
-                    username = currentState.username.takeIf { it.isNotBlank() },
-                    password = currentState.password.takeIf { it.isNotBlank() },
-                    position = currentState.cameras.size,
-                )
+                statusMessage.value = "Obtendo URLs RTSP..."
+                val resolvedProfiles = profiles.map { profile ->
+                    ResolvedOnvifProfile(
+                        profile = profile,
+                        streamUri = onvifRepository
+                            .getStreamUri(mediaServiceUrl, profile.token, credentials)
+                            .getOrThrow(),
+                    )
+                }
+                val selections = OnvifProfileSelector.selectCameras(resolvedProfiles)
+                if (selections.isEmpty()) {
+                    error("Nenhum perfil de mídia ONVIF encontrado.")
+                }
+
+                val baseCameraId = device.stableCameraId()
+                val baseName = device.displayLabel()
+                val firstSelectionKey = selections.first().groupKey
+                selections.forEachIndexed { index, selection ->
+                    val cameraId = device.stableCameraIdForSelection(
+                        baseCameraId = baseCameraId,
+                        selectionKey = selection.groupKey,
+                        firstSelectionKey = firstSelectionKey,
+                    )
+                    cameraRepository.saveOnvifCamera(
+                        id = cameraId,
+                        name = selection.displayName(baseName, index),
+                        endpoint = deviceServiceUrl,
+                        onvifDeviceServiceUrl = deviceServiceUrl,
+                        mainRtspUrl = selection.main.streamUri.uri,
+                        subRtspUrl = selection.sub?.streamUri?.uri,
+                        username = currentState.username.takeIf { it.isNotBlank() },
+                        password = currentState.password.takeIf { it.isNotBlank() },
+                        position = currentState.positionForCamera(cameraId, index),
+                    )
+                }
             }.onSuccess {
-                statusMessage.value = "Câmera ONVIF conectada."
+                statusMessage.value = "Câmera(s) ONVIF conectada(s). Vá para Ver câmeras para visualizar."
             }.onFailure { error ->
                 val message = error.toOnvifUserMessage()
                 if (error.isLikelyAuthenticationError()) {
@@ -360,6 +376,28 @@ private fun DiscoveredOnvifDevice.primaryXAddr(): String? =
 private fun DiscoveredOnvifDevice.stableCameraId(): String =
     "onvif-${Integer.toHexString(stableKey().hashCode())}"
 
+private fun DiscoveredOnvifDevice.stableCameraIdForSelection(
+    baseCameraId: String,
+    selectionKey: String,
+    firstSelectionKey: String,
+): String =
+    if (selectionKey == firstSelectionKey) {
+        baseCameraId
+    } else {
+        "$baseCameraId-${Integer.toHexString(selectionKey.hashCode())}"
+    }
+
+private fun OnvifCameraProfileSelection.displayName(
+    baseName: String,
+    index: Int,
+): String =
+    channelNumber?.let { channel -> "CAM$channel" }
+        ?: main.profile.name.takeIf { it.isNotBlank() }
+        ?: if (index == 0) baseName else "$baseName ${index + 1}"
+
+private fun CameraManagerUiState.positionForCamera(cameraId: String, newCameraOffset: Int): Int =
+    cameras.firstOrNull { camera -> camera.id == cameraId }?.position ?: (cameras.size + newCameraOffset)
+
 private fun CameraManagerUiState.credentialsOrNull(): OnvifCredentials? =
     username.takeIf { it.isNotBlank() }?.let { user ->
         OnvifCredentials(
@@ -377,6 +415,10 @@ private fun Throwable.toOnvifUserMessage(): String =
     when {
         isLikelyAuthenticationError() ->
             "Falha de autenticação ONVIF. Confira usuário, senha e se o ONVIF está ativo no dispositivo."
+        message.orEmpty().contains("Cleartext HTTP traffic", ignoreCase = true) ->
+            "O Android bloqueou a conexão HTTP local do ONVIF."
+        message.orEmpty().contains("ONVIF HTTP", ignoreCase = true) ->
+            message ?: "ONVIF HTTP só é permitido na rede local."
         message.orEmpty().contains("timeout", ignoreCase = true) ->
             "Tempo esgotado ao consultar o dispositivo ONVIF."
         else ->
