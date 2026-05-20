@@ -10,17 +10,26 @@ Sentinela Cam TV foi pensado para uso local e privado.
 - Não cria conta de usuário.
 - Não envia telemetria para servidores do projeto.
 - Não depende de nuvem para visualizar câmeras locais.
+- Não envia dados das câmeras para terceiros.
 
 ## Dados usados pelo app
 
-Durante o desenvolvimento, o app usa dados locais de conexão com DVR/câmeras para montar URLs RTSP. Esses dados podem incluir host/IP, porta, usuário e senha.
+O app armazena localmente dados necessários para conectar DVRs, NVRs e câmeras, como nome, endereço, URL RTSP e credenciais.
 
-Essas informações devem ficar apenas no dispositivo do usuário ou no ambiente local de desenvolvimento. Elas não devem ser enviadas para o repositório.
+Credenciais salvas pelo app ficam no próprio aparelho. O projeto não recebe, coleta ou sincroniza esses dados.
 
 ## Rede
 
-O app precisa da permissão de internet/rede para conectar ao DVR ou às câmeras RTSP na rede local. Essa permissão não implica envio de dados para terceiros.
+O app precisa de permissão de internet/rede para conectar ao DVR ou às câmeras RTSP na rede local. Essa permissão também é usada quando o usuário aciona manualmente a busca por atualizações no GitHub.
 
-## Observação sobre versões de desenvolvimento
+A descoberta ONVIF/WS-Discovery só deve ocorrer após ação do usuário.
 
-Builds de desenvolvimento podem incluir configurações locais injetadas via `BuildConfig` para facilitar testes. Não distribua APKs gerados com credenciais reais.
+## Atualizações
+
+O botão `Buscar atualização` consulta o GitHub Releases apenas quando acionado pelo usuário. O app não faz checagem em segundo plano e não instala atualizações silenciosamente.
+
+## Logs locais
+
+O app pode gerar logs locais para suporte e relatórios locais de crashes. Esses arquivos ficam no aparelho até o usuário decidir exportá-los.
+
+Logs não devem incluir senhas, tokens ou URLs RTSP com credenciais.

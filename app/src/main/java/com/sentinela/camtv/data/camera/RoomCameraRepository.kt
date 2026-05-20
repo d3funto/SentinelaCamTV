@@ -35,12 +35,18 @@ class RoomCameraRepository(
         name: String,
         rtspUrl: String,
         subRtspUrl: String?,
+        username: String?,
+        password: String?,
         position: Int,
     ) {
         val main = RtspUrlSanitizer.sanitize(rtspUrl)
         val sub = subRtspUrl?.let(RtspUrlSanitizer::sanitize)
-        val username = main.username ?: sub?.username
-        val password = main.password ?: sub?.password
+        val credentials = RtspCredentialResolver.resolve(
+            main = main,
+            sub = sub,
+            username = username,
+            password = password,
+        )
 
         cameraDao.upsert(
             CameraEntity(
@@ -52,8 +58,8 @@ class RoomCameraRepository(
                 mainRtspUrl = main.urlWithoutUserInfo,
                 subRtspUrl = sub?.urlWithoutUserInfo,
                 intelbrasChannel = null,
-                usernameCipherText = credentialCipher.encrypt(username),
-                passwordCipherText = credentialCipher.encrypt(password),
+                usernameCipherText = credentialCipher.encrypt(credentials.username),
+                passwordCipherText = credentialCipher.encrypt(credentials.password),
                 position = position,
                 enabled = true,
                 authFailure = false,
@@ -104,6 +110,17 @@ class RoomCameraRepository(
 
     override suspend fun setAuthenticationFailure(cameraId: String, hasFailure: Boolean) {
         cameraDao.updateAuthFailure(cameraId, hasFailure)
+    }
+
+    override suspend fun deleteCamera(cameraId: String) {
+        val remainingIds = CameraOrder.remainingIdsAfterRemoval(
+            orderedIds = cameraDao.orderedIds(),
+            removedId = cameraId,
+        )
+        cameraDao.deleteById(cameraId)
+        remainingIds.forEachIndexed { index, id ->
+            cameraDao.updatePosition(id, index)
+        }
     }
 
     private fun Camera.toEntity(positionFallback: Int): CameraEntity {

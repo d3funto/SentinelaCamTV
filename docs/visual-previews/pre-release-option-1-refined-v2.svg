@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071821"/>
+      <stop offset="1" stop-color="#102C38"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#173B49"/>
+      <stop offset="1" stop-color="#102B36"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7CE7FF"/>
+      <stop offset="1" stop-color="#27D3FF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+
+    <symbol id="icon-v2" viewBox="0 0 360 360">
+      <rect x="0" y="0" width="360" height="360" rx="48" fill="url(#bg)" stroke="#27D3FF" stroke-width="8"/>
+
+      <path d="M54 96 C90 44, 270 44, 306 96 C270 148, 90 148, 54 96 Z"
+        fill="#071821" stroke="url(#cyan)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="180" cy="96" r="32" fill="#27D3FF"/>
+      <circle cx="180" cy="96" r="12" fill="#071821"/>
+      <circle cx="194" cy="82" r="5" fill="#BDF4FF"/>
+
+      <rect x="48" y="168" width="80" height="52" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="140" y="168" width="80" height="52" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="232" y="168" width="80" height="52" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="64" y="242" width="126" height="70" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="204" y="242" width="92" height="70" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+    </symbol>
+
+    <symbol id="banner-v2" viewBox="0 0 640 360">
+      <rect x="0" y="0" width="640" height="360" fill="#071821"/>
+      <rect x="22" y="22" width="596" height="316" fill="#0B2530" stroke="#27D3FF" stroke-width="7"/>
+
+      <path d="M198 96 C248 30, 392 30, 442 96 C392 162, 248 162, 198 96 Z"
+        fill="#071821" stroke="url(#cyan)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="320" cy="96" r="34" fill="#27D3FF"/>
+      <circle cx="320" cy="96" r="13" fill="#071821"/>
+      <circle cx="334" cy="82" r="5" fill="#BDF4FF"/>
+
+      <rect x="60" y="168" width="146" height="76" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="226" y="168" width="146" height="76" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="392" y="168" width="146" height="76" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="110" y="266" width="182" height="70" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="330" y="266" width="182" height="70" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+    </symbol>
+  </defs>
+
+  <rect width="1200" height="820" fill="#041017"/>
+  <text x="60" y="62" font-family="Arial, sans-serif" font-size="32" fill="#EAF8FC" font-weight="700">Opcao 1 refinada v2</text>
+  <text x="60" y="96" font-family="Arial, sans-serif" font-size="18" fill="#AED0D9">Olho em cima, 5 mosaicos abaixo. Previa fora do app.</text>
+
+  <text x="60" y="150" font-family="Arial, sans-serif" font-size="20" fill="#EAF8FC" font-weight="700">Icone grande</text>
+  <g transform="translate(60 178)" filter="url(#shadow)">
+    <use href="#icon-v2" width="360" height="360"/>
+  </g>
+
+  <text x="500" y="150" font-family="Arial, sans-serif" font-size="20" fill="#EAF8FC" font-weight="700">Simulacao pequena</text>
+  <g transform="translate(500 178)" filter="url(#shadow)">
+    <use href="#icon-v2" width="144" height="144"/>
+  </g>
+  <g transform="translate(684 178)" filter="url(#shadow)">
+    <use href="#icon-v2" width="96" height="96"/>
+  </g>
+  <g transform="translate(824 178)" filter="url(#shadow)">
+    <use href="#icon-v2" width="72" height="72"/>
+  </g>
+  <text x="500" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">144 px</text>
+  <text x="684" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">96 px</text>
+  <text x="824" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">72 px</text>
+
+  <text x="60" y="610" font-family="Arial, sans-serif" font-size="20" fill="#EAF8FC" font-weight="700">Banner Android TV</text>
+  <g transform="translate(60 636)" filter="url(#shadow)">
+    <use href="#banner-v2" width="640" height="360"/>
+  </g>
+</svg>

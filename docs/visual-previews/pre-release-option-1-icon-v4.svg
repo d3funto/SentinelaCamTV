@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071821"/>
+      <stop offset="1" stop-color="#102C38"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#173B49"/>
+      <stop offset="1" stop-color="#102B36"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7CE7FF"/>
+      <stop offset="1" stop-color="#27D3FF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+
+    <symbol id="icon-v4" viewBox="0 0 360 360">
+      <rect x="0" y="0" width="360" height="360" rx="48" fill="url(#bg)" stroke="#27D3FF" stroke-width="8"/>
+
+      <path d="M56 78 C92 28, 268 28, 304 78 C268 128, 92 128, 56 78 Z"
+        fill="#071821" stroke="url(#cyan)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="180" cy="78" r="31" fill="#27D3FF"/>
+      <circle cx="180" cy="78" r="12" fill="#071821"/>
+      <circle cx="194" cy="64" r="5" fill="#BDF4FF"/>
+
+      <rect x="40" y="142" width="96" height="58" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="152" y="142" width="96" height="58" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="264" y="142" width="56" height="58" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="40" y="222" width="150" height="78" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+      <rect x="206" y="222" width="114" height="78" fill="url(#tile)" stroke="#7CE7FF" stroke-width="6"/>
+    </symbol>
+  </defs>
+
+  <rect width="1000" height="560" fill="#041017"/>
+  <text x="60" y="62" font-family="Arial, sans-serif" font-size="32" fill="#EAF8FC" font-weight="700">Icone opcao 1 - v4</text>
+  <text x="60" y="96" font-family="Arial, sans-serif" font-size="18" fill="#AED0D9">Mosaico alinhado como no app: fileiras com a mesma largura visual, 3 cameras em cima e 2 embaixo.</text>
+
+  <text x="60" y="150" font-family="Arial, sans-serif" font-size="20" fill="#EAF8FC" font-weight="700">Icone grande</text>
+  <g transform="translate(60 178)" filter="url(#shadow)">
+    <use href="#icon-v4" width="360" height="360"/>
+  </g>
+
+  <text x="500" y="150" font-family="Arial, sans-serif" font-size="20" fill="#EAF8FC" font-weight="700">Simulacao pequena</text>
+  <g transform="translate(500 178)" filter="url(#shadow)">
+    <use href="#icon-v4" width="144" height="144"/>
+  </g>
+  <g transform="translate(684 178)" filter="url(#shadow)">
+    <use href="#icon-v4" width="96" height="96"/>
+  </g>
+  <g transform="translate(824 178)" filter="url(#shadow)">
+    <use href="#icon-v4" width="72" height="72"/>
+  </g>
+  <text x="500" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">144 px</text>
+  <text x="684" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">96 px</text>
+  <text x="824" y="370" font-family="Arial, sans-serif" font-size="16" fill="#AED0D9">72 px</text>
+</svg>

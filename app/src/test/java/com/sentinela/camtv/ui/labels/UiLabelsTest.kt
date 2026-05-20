@@ -27,14 +27,21 @@ class UiLabelsTest {
 
     @Test
     fun transmissionModeLabelsAreUserFacingPortuguese() {
-        assertEquals("Menor latência", transmissionModeLabel(TransmissionMode.MENOR_LATENCIA))
-        assertEquals("Qualidade", transmissionModeLabel(TransmissionMode.QUALIDADE))
-        assertEquals("Modo: Menor latência", transmissionModeMenuLabel(TransmissionMode.MENOR_LATENCIA))
+        assertEquals("menor latência", transmissionModeLabel(TransmissionMode.MENOR_LATENCIA))
+        assertEquals("estabilidade", transmissionModeLabel(TransmissionMode.QUALIDADE))
+        assertEquals("Modo: menor latência", transmissionModeMenuLabel(TransmissionMode.MENOR_LATENCIA))
+        assertEquals("Modo: estabilidade", transmissionModeMenuLabel(TransmissionMode.QUALIDADE))
     }
 
     @Test
     fun streamQualityLabelsUseHdAndSd() {
-        assertEquals("Qualidade: HD", streamQualityLabel(StreamQuality.HD))
-        assertEquals("Qualidade: SD", streamQualityLabel(StreamQuality.SD))
+        assertEquals("Vídeo: HD", streamQualityLabel(StreamQuality.HD))
+        assertEquals("Vídeo: SD", streamQualityLabel(StreamQuality.SD))
+    }
+
+    @Test
+    fun infoLabelsUseShortName() {
+        assertEquals("Info: Ativada", infoMenuLabel(true))
+        assertEquals("Info: Desativada", infoMenuLabel(false))
     }
 }

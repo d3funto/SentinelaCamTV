@@ -7,20 +7,36 @@ object PlayerErrorMapper {
         error: PlaybackException,
         transportMode: RtspTransportMode,
     ): PlayerConnectionState {
-        val details = error.diagnosticsText().lowercase()
+        val details = error.diagnosticsText()
+
+        return mapDiagnosticsText(
+            details = details,
+            transportMode = transportMode,
+            fallbackMessage = error.shortMessage(),
+        )
+    }
+
+    internal fun mapDiagnosticsText(
+        details: String,
+        transportMode: RtspTransportMode,
+        fallbackMessage: String = "Erro desconhecido",
+    ): PlayerConnectionState {
+        val normalizedDetails = details.lowercase()
 
         return when {
-            details.hasAny("401", "unauthorized", "authentication", "auth", "permission") ->
+            normalizedDetails.hasAny("401", "unauthorized", "authentication", "auth", "permission") ->
                 PlayerConnectionState.AuthenticationFailed
-            details.hasAny("codec", "decoder", "decoding", "format_unsupported", "exceeds_capabilities") ->
+            normalizedDetails.hasAny("codec", "decoder", "decoding", "format_unsupported", "exceeds_capabilities") ->
                 PlayerConnectionState.UnsupportedCodec
-            details.hasAny("timeout", "timed out") && transportMode == RtspTransportMode.UdpFirst ->
+            normalizedDetails.hasAny("timeout", "timed out") && transportMode == RtspTransportMode.UdpFirst ->
                 PlayerConnectionState.UdpLikelyBlocked
-            details.hasAny("timeout", "timed out") ->
+            normalizedDetails.hasAny("timeout", "timed out") ->
                 PlayerConnectionState.Timeout
-            details.hasAny("network", "unreachable", "unknownhost", "econnrefused", "enetunreach") ->
+            normalizedDetails.hasAny("econnrefused", "connection refused", "connectexception") ->
+                PlayerConnectionState.ConnectionRefused
+            normalizedDetails.hasAny("network", "unreachable", "unknownhost", "enetunreach") ->
                 PlayerConnectionState.NetworkOffline
-            else -> PlayerConnectionState.UnknownError(error.shortMessage())
+            else -> PlayerConnectionState.UnknownError(fallbackMessage)
         }
     }
 

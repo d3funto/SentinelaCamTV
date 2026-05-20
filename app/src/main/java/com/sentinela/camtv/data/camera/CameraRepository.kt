@@ -13,6 +13,8 @@ interface CameraRepository {
         name: String,
         rtspUrl: String,
         subRtspUrl: String?,
+        username: String?,
+        password: String?,
         position: Int,
     )
     suspend fun saveOnvifCamera(
@@ -28,4 +30,5 @@ interface CameraRepository {
     )
     suspend fun updateCameraOrder(cameraIds: List<String>)
     suspend fun setAuthenticationFailure(cameraId: String, hasFailure: Boolean)
+    suspend fun deleteCamera(cameraId: String)
 }

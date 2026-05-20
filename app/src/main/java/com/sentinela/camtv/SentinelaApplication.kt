@@ -18,7 +18,7 @@ class SentinelaApplication : Application() {
         Timber.plant(container.fileTimberTree)
         container.crashReporter.install()
 
-        if (BuildConfig.DEBUG) {
+        if (BuildConfig.SEED_DEBUG_CAMERAS) {
             runBlocking(Dispatchers.IO) {
                 container.cameraRepository.seedDebugCamerasIfEmpty(defaultMosaicCameras())
             }

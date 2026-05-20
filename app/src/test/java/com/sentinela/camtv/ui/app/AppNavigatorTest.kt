@@ -60,7 +60,7 @@ class AppNavigatorTest {
     }
 
     @Test
-    fun returnToMosaicFallsBackToHomeWhenCamerasDisappear() {
+    fun returnToMosaicStaysValidWhenCamerasDisappear() {
         val navigator = AppNavigator()
         navigator.initialize(hasCameras = true)
 
@@ -68,16 +68,16 @@ class AppNavigatorTest {
         navigator.setCameraAvailability(hasCameras = false)
         navigator.goBack()
 
-        assertEquals(AppDestination.Home, navigator.state.destination)
+        assertEquals(AppDestination.Mosaic, navigator.state.destination)
     }
 
     @Test
-    fun doesNotOpenMosaicWithoutCameras() {
+    fun opensMosaicWithoutCameras() {
         val navigator = AppNavigator()
         navigator.initialize(hasCameras = false)
 
         navigator.openMosaic()
 
-        assertEquals(AppDestination.Home, navigator.state.destination)
+        assertEquals(AppDestination.Mosaic, navigator.state.destination)
     }
 }

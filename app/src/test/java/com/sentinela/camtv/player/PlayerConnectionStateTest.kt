@@ -9,14 +9,22 @@ class PlayerConnectionStateTest {
     fun authErrorHasCredentialMessageAndIsTerminal() {
         val state = PlayerConnectionState.AuthenticationFailed
 
-        assertEquals("Erro: login ou senha invalidos", state.statusText())
+        assertEquals("Erro: login ou senha inválidos", state.statusText())
         assertTrue(state.isTerminalError())
     }
 
     @Test
-    fun udpLikelyBlockedSuggestsQualityMode() {
+    fun connectionRefusedHasSpecificMessageAndIsTerminal() {
+        val state = PlayerConnectionState.ConnectionRefused
+
+        assertEquals("Erro: conexão recusada", state.statusText())
+        assertTrue(state.isTerminalError())
+    }
+
+    @Test
+    fun udpLikelyBlockedSuggestsStabilityMode() {
         assertEquals(
-            "Aviso: UDP instavel, tente modo QUALIDADE",
+            "Aviso: UDP instável, tente modo estabilidade",
             PlayerConnectionState.UdpLikelyBlocked.statusText(),
         )
     }

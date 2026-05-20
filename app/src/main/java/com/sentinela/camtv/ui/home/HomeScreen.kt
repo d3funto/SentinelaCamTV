@@ -14,13 +14,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
-import com.sentinela.camtv.ui.common.BodyText
+import com.sentinela.camtv.BuildConfig
+import com.sentinela.camtv.ui.common.AppAboutFooter
 import com.sentinela.camtv.ui.common.ScreenTitle
 import com.sentinela.camtv.ui.common.SentinelaScreen
 
 @Composable
 fun HomeScreen(
-    canOpenMosaic: Boolean,
     onOpenMosaic: () -> Unit,
     onOpenCameras: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -38,35 +38,31 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             ScreenTitle("Sentinela Cam TV")
-            BodyText("Monitoramento local para Android TV e Google TV")
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            if (canOpenMosaic) {
-                Button(
-                    onClick = onOpenMosaic,
-                    modifier = Modifier.focusRequester(focusRequester),
-                ) {
-                    Text("Visualizar mosaico")
-                }
-            } else {
-                Button(
-                    onClick = onOpenCameras,
-                    modifier = Modifier.focusRequester(focusRequester),
-                ) {
-                    Text("Gerenciar câmeras")
-                }
+            Button(
+                onClick = onOpenMosaic,
+                modifier = Modifier.focusRequester(focusRequester),
+            ) {
+                Text("Ver câmeras")
             }
 
-            if (canOpenMosaic) {
-                Button(onClick = onOpenCameras) {
-                    Text("Gerenciar câmeras")
-                }
+            Button(onClick = onOpenCameras) {
+                Text("Cadastrar câmeras")
             }
 
             Button(onClick = onOpenSettings) {
-                Text("Ajustes")
+                Text("Suporte")
             }
+
+            Spacer(modifier = Modifier.height(26.dp))
+
+            AppAboutFooter(
+                versionName = BuildConfig.VERSION_NAME,
+                license = "GPL-3.0-or-later",
+                githubUrl = "https://github.com/d3funto/SentinelaCamTV",
+            )
         }
     }
 }

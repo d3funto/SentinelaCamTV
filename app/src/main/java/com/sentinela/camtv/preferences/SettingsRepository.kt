@@ -8,7 +8,5 @@ interface SettingsRepository {
     suspend fun setShowPlayerInfo(showPlayerInfo: Boolean)
     suspend fun setShowMosaicInfo(showMosaicInfo: Boolean)
     suspend fun setShowFullscreenInfo(showFullscreenInfo: Boolean)
-    suspend fun setFullscreenAudioEnabled(fullscreenAudioEnabled: Boolean)
     suspend fun setGlobalTransmissionMode(transmissionMode: TransmissionMode)
-    suspend fun setAutoStartOnBoot(enabled: Boolean)
 }

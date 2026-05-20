@@ -12,15 +12,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class MosaicUiState(
     val cameras: List<Camera> = emptyList(),
+    val isLoading: Boolean = true,
     val showInfo: Boolean = true,
     val quickMenuVisible: Boolean = false,
     val reorderMode: Boolean = false,
     val selectedForSwapId: String? = null,
+    val cameraPendingDeletion: Camera? = null,
     val fullscreenCamera: Camera? = null,
     val transmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
     val preferences: PlayerUiPreferences = PlayerUiPreferences(),
@@ -28,11 +32,17 @@ data class MosaicUiState(
 
 private data class MosaicCoreState(
     val cameras: List<Camera>,
+    val isLoading: Boolean,
     val preferences: PlayerUiPreferences,
     val quickMenuVisible: Boolean,
     val reorderMode: Boolean,
     val selectedForSwapId: String?,
 )
+
+private sealed interface CameraListState {
+    data object Loading : CameraListState
+    data class Loaded(val cameras: List<Camera>) : CameraListState
+}
 
 class MosaicViewModel(
     private val cameraRepository: CameraRepository,
@@ -41,17 +51,26 @@ class MosaicViewModel(
     private val quickMenuVisible = MutableStateFlow(false)
     private val reorderMode = MutableStateFlow(false)
     private val selectedForSwapId = MutableStateFlow<String?>(null)
+    private val cameraPendingDeletionId = MutableStateFlow<String?>(null)
     private val fullscreenCameraId = MutableStateFlow<String?>(null)
+    private val cameraListState = cameraRepository.observeEnabledCameras()
+        .map<List<Camera>, CameraListState> { cameras -> CameraListState.Loaded(cameras) }
+        .onStart { emit(CameraListState.Loading) }
 
     private val coreState = combine(
-        cameraRepository.observeEnabledCameras(),
+        cameraListState,
         settingsRepository.observePreferences(),
         quickMenuVisible,
         reorderMode,
         selectedForSwapId,
-    ) { cameras, preferences, menuVisible, reorder, selectedId ->
+    ) { cameraState, preferences, menuVisible, reorder, selectedId ->
+        val cameras = when (cameraState) {
+            is CameraListState.Loaded -> cameraState.cameras
+            CameraListState.Loading -> emptyList()
+        }
         MosaicCoreState(
             cameras = cameras,
+            isLoading = cameraState == CameraListState.Loading,
             preferences = preferences,
             quickMenuVisible = menuVisible,
             reorderMode = reorder,
@@ -62,13 +81,16 @@ class MosaicViewModel(
     val state: StateFlow<MosaicUiState> = combine(
         coreState,
         fullscreenCameraId,
-    ) { core, fullscreenId ->
+        cameraPendingDeletionId,
+    ) { core, fullscreenId, pendingDeletionId ->
         MosaicUiState(
             cameras = core.cameras,
+            isLoading = core.isLoading,
             showInfo = core.preferences.showMosaicInfo,
             quickMenuVisible = core.quickMenuVisible,
             reorderMode = core.reorderMode,
             selectedForSwapId = core.selectedForSwapId,
+            cameraPendingDeletion = core.cameras.firstOrNull { it.id == pendingDeletionId },
             fullscreenCamera = core.cameras.firstOrNull { it.id == fullscreenId },
             transmissionMode = core.preferences.globalTransmissionMode,
             preferences = core.preferences,
@@ -81,6 +103,7 @@ class MosaicViewModel(
 
     fun onBackPressed() {
         when {
+            cameraPendingDeletionId.value != null -> cameraPendingDeletionId.value = null
             quickMenuVisible.value -> quickMenuVisible.value = false
             reorderMode.value -> {
                 reorderMode.value = false
@@ -138,6 +161,30 @@ class MosaicViewModel(
         quickMenuVisible.value = false
         reorderMode.value = true
         selectedForSwapId.value = null
+    }
+
+    fun requestCameraDeletion(camera: Camera) {
+        if (reorderMode.value) {
+            cameraPendingDeletionId.value = camera.id
+        }
+    }
+
+    fun dismissCameraDeletion() {
+        cameraPendingDeletionId.value = null
+    }
+
+    fun confirmCameraDeletion() {
+        val cameraId = cameraPendingDeletionId.value ?: return
+        cameraPendingDeletionId.value = null
+        if (selectedForSwapId.value == cameraId) {
+            selectedForSwapId.value = null
+        }
+        if (fullscreenCameraId.value == cameraId) {
+            fullscreenCameraId.value = null
+        }
+        viewModelScope.launch {
+            cameraRepository.deleteCamera(cameraId)
+        }
     }
 
     fun toggleTransmissionMode() {

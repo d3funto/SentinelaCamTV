@@ -2,6 +2,7 @@ package com.sentinela.camtv.ui.mosaic
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -34,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.tv.material3.Button
+import androidx.tv.material3.Text
 import com.sentinela.camtv.config.APP_PADDING_DP
 import com.sentinela.camtv.config.AppDvrConfig
 import com.sentinela.camtv.config.DvrConnectionConfig
@@ -46,7 +51,7 @@ import com.sentinela.camtv.player.PlayerMode
 import com.sentinela.camtv.player.streamRequestFor
 import com.sentinela.camtv.ui.common.QuickMenu
 import com.sentinela.camtv.ui.common.QuickMenuAction
-import com.sentinela.camtv.ui.labels.activationLabel
+import com.sentinela.camtv.ui.labels.infoMenuLabel
 import com.sentinela.camtv.ui.labels.transmissionModeMenuLabel
 import com.sentinela.camtv.ui.player.FullscreenCameraScreen
 import com.sentinela.camtv.ui.player.FullscreenPlayerViewModel
@@ -130,6 +135,11 @@ fun MosaicScreen(
             return@Box
         }
 
+        if (state.isLoading) {
+            LoadingMosaicMessage()
+            return@Box
+        }
+
         if (state.cameras.isEmpty()) {
             EmptyMosaicMessage()
             return@Box
@@ -144,14 +154,14 @@ fun MosaicScreen(
             state = state,
             rtspUrlBuilder = rtspUrlBuilder,
             onCameraClick = mosaicViewModel::onCameraClick,
-            tilesFocusable = !state.quickMenuVisible,
+            onCameraLongClick = mosaicViewModel::requestCameraDeletion,
+            tilesFocusable = !state.quickMenuVisible && state.cameraPendingDeletion == null,
             showFocusIndicator = showCameraFocusIndicator || state.reorderMode,
             modifier = Modifier.fillMaxSize(),
         )
 
         if (state.reorderMode) {
             ReorderHint(
-                selected = state.selectedForSwapId != null,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         }
@@ -171,6 +181,15 @@ fun MosaicScreen(
                     mosaicViewModel.dismissQuickMenu()
                     onOpenSettings()
                 },
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+
+        state.cameraPendingDeletion?.let { camera ->
+            CameraDeletionDialog(
+                cameraName = camera.name,
+                onDismiss = mosaicViewModel::dismissCameraDeletion,
+                onConfirm = mosaicViewModel::confirmCameraDeletion,
                 modifier = Modifier.align(Alignment.Center),
             )
         }
@@ -197,6 +216,7 @@ private fun MosaicGrid(
     state: MosaicUiState,
     rtspUrlBuilder: IntelbrasRtspUrlBuilder,
     onCameraClick: (Camera) -> Unit,
+    onCameraLongClick: (Camera) -> Unit,
     tilesFocusable: Boolean,
     showFocusIndicator: Boolean,
     modifier: Modifier = Modifier,
@@ -210,6 +230,7 @@ private fun MosaicGrid(
             state = state,
             rtspUrlBuilder = rtspUrlBuilder,
             onCameraClick = onCameraClick,
+            onCameraLongClick = onCameraLongClick,
             tilesFocusable = tilesFocusable,
             showFocusIndicator = showFocusIndicator,
             rowWeight = 1f,
@@ -219,6 +240,7 @@ private fun MosaicGrid(
             state = state,
             rtspUrlBuilder = rtspUrlBuilder,
             onCameraClick = onCameraClick,
+            onCameraLongClick = onCameraLongClick,
             tilesFocusable = tilesFocusable,
             showFocusIndicator = showFocusIndicator,
             rowWeight = 1.15f,
@@ -232,6 +254,7 @@ private fun ColumnScope.MosaicCameraRow(
     state: MosaicUiState,
     rtspUrlBuilder: IntelbrasRtspUrlBuilder,
     onCameraClick: (Camera) -> Unit,
+    onCameraLongClick: (Camera) -> Unit,
     tilesFocusable: Boolean,
     showFocusIndicator: Boolean,
     rowWeight: Float,
@@ -266,6 +289,11 @@ private fun ColumnScope.MosaicCameraRow(
                     onClick = {
                         onCameraClick(camera)
                     },
+                    onLongClick = if (state.reorderMode) {
+                        { onCameraLongClick(camera) }
+                    } else {
+                        null
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxSize(),
@@ -289,11 +317,11 @@ private fun MosaicQuickMenu(
     QuickMenu(
         actions = listOf(
             QuickMenuAction("Sair do app", onExitApp),
-            QuickMenuAction("Informações: ${activationLabel(state.showInfo)}", onToggleInfo),
+            QuickMenuAction(infoMenuLabel(state.showInfo), onToggleInfo),
             QuickMenuAction("Reorganizar mosaico", onStartReorder),
             QuickMenuAction(transmissionModeMenuLabel(state.transmissionMode), onToggleTransmissionMode),
             QuickMenuAction("Ir para início", onOpenHome),
-            QuickMenuAction("Ir para ajustes", onOpenSettings),
+            QuickMenuAction("Ir para suporte", onOpenSettings),
         ),
         modifier = modifier,
     )
@@ -301,7 +329,6 @@ private fun MosaicQuickMenu(
 
 @Composable
 private fun ReorderHint(
-    selected: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -311,14 +338,80 @@ private fun ReorderHint(
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         BasicText(
-            text = if (selected) {
-                "Modo reorganização: selecione outra câmera para trocar. Pressione Voltar para concluir."
-            } else {
-                "Modo reorganização: selecione duas câmeras para trocar. Pressione Voltar para concluir."
-            },
+            text = MosaicUiText.REORDER_HINT,
             style = TextStyle(
                 color = Color.White,
                 fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun CameraDeletionDialog(
+    cameraName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cancelFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        cancelFocusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = modifier
+            .background(Color(0xF0101820))
+            .padding(24.dp)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        BasicText(
+            text = MosaicUiText.DELETE_CAMERA_CONFIRMATION,
+            style = TextStyle(
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        BasicText(
+            text = cameraName,
+            style = TextStyle(
+                color = Color(0xFFAED0D9),
+                fontSize = 14.sp,
+            ),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.focusRequester(cancelFocusRequester),
+            ) {
+                Text("Cancelar")
+            }
+            Button(onClick = onConfirm) {
+                Text("Excluir")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingMosaicMessage() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            text = "Carregando câmeras...",
+            style = TextStyle(
+                color = Color.White,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             ),
         )

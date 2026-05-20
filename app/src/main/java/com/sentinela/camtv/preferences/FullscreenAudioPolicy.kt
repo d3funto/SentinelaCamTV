@@ -5,8 +5,4 @@ import com.sentinela.camtv.player.AudioMode
 
 @Suppress("UNUSED_PARAMETER")
 fun PlayerUiPreferences.fullscreenAudioModeFor(camera: Camera): AudioMode =
-    if (fullscreenAudioEnabled) {
-        AudioMode.Enabled
-    } else {
-        AudioMode.Disabled
-    }
+    AudioMode.Enabled

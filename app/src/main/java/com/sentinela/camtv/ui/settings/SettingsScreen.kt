@@ -22,23 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.sentinela.camtv.ui.common.AppAboutFooter
 import com.sentinela.camtv.ui.common.BodyText
 import com.sentinela.camtv.ui.common.SectionTitle
 import com.sentinela.camtv.ui.common.SentinelaScreen
-import com.sentinela.camtv.ui.labels.activationLabel
-import com.sentinela.camtv.ui.labels.statusLabel
-import com.sentinela.camtv.ui.labels.transmissionModeLabel
 
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
-    onToggleMosaicInfo: () -> Unit,
-    onToggleFullscreenInfo: () -> Unit,
-    onToggleFullscreenAudio: () -> Unit,
-    onToggleTransmissionMode: () -> Unit,
-    onToggleAutoStartOnBoot: () -> Unit,
     onExportSupportLogs: () -> Unit,
     onExportCrashReport: () -> Unit,
+    onCheckForUpdate: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallDownloadedUpdate: () -> Unit,
     onOpenHome: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -61,27 +57,45 @@ fun SettingsScreen(
                     modifier = Modifier.width(430.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SectionTitle("Reprodução")
                     SettingsActionButton(
-                        label = "Informações no mosaico: ${activationLabel(state.preferences.showMosaicInfo)}",
-                        onClick = onToggleMosaicInfo,
+                        label = "Exportar logs para suporte",
+                        onClick = onExportSupportLogs,
                         modifier = Modifier.focusRequester(focusRequester),
                     )
                     SettingsActionButton(
-                        label = "Informações na tela cheia: ${activationLabel(state.preferences.showFullscreenInfo)}",
-                        onClick = onToggleFullscreenInfo,
+                        label = "Exportar logs de crashes",
+                        onClick = onExportCrashReport,
                     )
                     SettingsActionButton(
-                        label = "Áudio na tela cheia: ${statusLabel(state.preferences.fullscreenAudioEnabled)}",
-                        onClick = onToggleFullscreenAudio,
+                        label = if (state.checkingForUpdate) {
+                            "Buscando atualização..."
+                        } else {
+                            "Buscar atualização"
+                        },
+                        onClick = onCheckForUpdate,
+                        enabled = !state.checkingForUpdate && !state.downloadingUpdate,
                     )
+                    state.availableUpdate?.let {
+                        SettingsActionButton(
+                            label = if (state.downloadingUpdate) {
+                                "Baixando..."
+                            } else {
+                                "Baixar"
+                            },
+                            onClick = onDownloadUpdate,
+                            enabled = !state.downloadingUpdate && !state.checkingForUpdate,
+                        )
+                    }
+                    state.downloadedUpdate?.let {
+                        SettingsActionButton(
+                            label = "Instalar",
+                            onClick = onInstallDownloadedUpdate,
+                            enabled = !state.downloadingUpdate && !state.checkingForUpdate,
+                        )
+                    }
                     SettingsActionButton(
-                        label = "Modo padrão: ${transmissionModeLabel(state.preferences.globalTransmissionMode)}",
-                        onClick = onToggleTransmissionMode,
-                    )
-                    SettingsActionButton(
-                        label = "Iniciar ao ligar TV/Box: ${statusLabel(state.preferences.autoStartOnBoot)}",
-                        onClick = onToggleAutoStartOnBoot,
+                        label = "Ir para início",
+                        onClick = onOpenHome,
                     )
                 }
 
@@ -90,25 +104,16 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SectionTitle("Suporte")
-                    SettingsActionButton(
-                        label = "Exportar logs para suporte",
-                        onClick = onExportSupportLogs,
+                    AppAboutFooter(
+                        versionName = state.versionName,
+                        license = state.license,
+                        githubUrl = state.githubUrl,
                     )
-                    SettingsActionButton(
-                        label = "Exportar relatório de erros",
-                        onClick = onExportCrashReport,
-                    )
-                    SettingsActionButton(
-                        label = "Ir para início",
-                        onClick = onOpenHome,
-                    )
-
-                    SectionTitle("Sobre o app")
-                    BodyText("Sentinela Cam TV ${state.versionName}")
-                    BodyText(state.license)
-                    BodyText(state.githubUrl)
 
                     state.exportMessage?.let { message ->
+                        BodyText(message)
+                    }
+                    state.updateMessage?.let { message ->
                         BodyText(message)
                     }
                 }
@@ -121,14 +126,16 @@ fun SettingsScreen(
 private fun SettingsActionButton(
     label: String,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyUp && keyEvent.key.isConfirmKey()) {
+                if (enabled && keyEvent.type == KeyEventType.KeyUp && keyEvent.key.isConfirmKey()) {
                     onClick()
                     true
                 } else {

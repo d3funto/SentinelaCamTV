@@ -6,6 +6,7 @@ sealed interface PlayerConnectionState {
     data object Playing : PlayerConnectionState
     data class Reconnecting(val message: String? = null) : PlayerConnectionState
     data object NetworkOffline : PlayerConnectionState
+    data object ConnectionRefused : PlayerConnectionState
     data object AuthenticationFailed : PlayerConnectionState
     data object Timeout : PlayerConnectionState
     data object UnsupportedCodec : PlayerConnectionState
@@ -24,15 +25,17 @@ fun PlayerConnectionState.statusText(): String = when (this) {
     }
 
     PlayerConnectionState.NetworkOffline -> "Erro: rede offline"
-    PlayerConnectionState.AuthenticationFailed -> "Erro: login ou senha invalidos"
-    PlayerConnectionState.Timeout -> "Erro: timeout"
-    PlayerConnectionState.UnsupportedCodec -> "Erro: codec nao suportado"
-    PlayerConnectionState.UdpLikelyBlocked -> "Aviso: UDP instavel, tente modo QUALIDADE"
+    PlayerConnectionState.ConnectionRefused -> "Erro: conexão recusada"
+    PlayerConnectionState.AuthenticationFailed -> "Erro: login ou senha inválidos"
+    PlayerConnectionState.Timeout -> "Erro: tempo esgotado"
+    PlayerConnectionState.UnsupportedCodec -> "Erro: codec não suportado"
+    PlayerConnectionState.UdpLikelyBlocked -> "Aviso: UDP instável, tente modo estabilidade"
     is PlayerConnectionState.UnknownError -> message
 }
 
 fun PlayerConnectionState.isTerminalError(): Boolean = when (this) {
     PlayerConnectionState.NetworkOffline,
+    PlayerConnectionState.ConnectionRefused,
     PlayerConnectionState.AuthenticationFailed,
     PlayerConnectionState.Timeout,
     PlayerConnectionState.UnsupportedCodec,

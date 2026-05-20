@@ -25,6 +25,7 @@ object PlayerReconnectPolicy {
 
         PlayerConnectionState.Playing,
         PlayerConnectionState.NetworkOffline,
+        PlayerConnectionState.ConnectionRefused,
         PlayerConnectionState.AuthenticationFailed,
         PlayerConnectionState.Timeout,
         PlayerConnectionState.UnsupportedCodec,

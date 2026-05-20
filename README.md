@@ -2,7 +2,7 @@
 
 Sentinela Cam TV é um aplicativo open-source para visualizar câmeras de segurança em Android TV e Google TV.
 
-O projeto está em desenvolvimento inicial. A prioridade atual é um mosaico leve para dispositivos modestos, especialmente o Izy Play com Android TV 10, 1 GB de RAM e saída 1080p. O app também deve funcionar em Google TV mais recentes, mas o alvo principal de performance é o hardware mais limitado.
+O foco do projeto é monitoramento local, sem anúncios, sem rastreamento, sem telemetria e sem dependência de nuvem. A prioridade técnica é rodar bem em TVs e TV Boxes modestas, especialmente aparelhos com cerca de 1 GB de RAM.
 
 ## Princípios
 
@@ -12,21 +12,21 @@ O projeto está em desenvolvimento inicial. A prioridade atual é um mosaico lev
 - Sem conta obrigatória.
 - Sem nuvem obrigatória.
 - Código aberto sob `GPL-3.0-or-later`.
-- Otimizado primeiro para uso com controle remoto em Android TV / Google TV.
+- Otimizado para controle remoto em Android TV / Google TV.
 
 ## Estado atual
 
-- Mosaico com 5 câmeras.
+- Mosaico de câmeras.
 - Tela cheia a partir do mosaico.
 - Reprodução RTSP usando AndroidX Media3/ExoPlayer.
-- Configuração local de DVR Intelbras/MHDX via `local.properties` em builds de desenvolvimento.
-- Estrutura inicial com `domain`, `player`, `preferences`, `data`, `ui`, Room, DataStore e um módulo ONVIF isolado.
+- Cadastro por RTSP direto.
+- Base inicial para descoberta ONVIF.
+- Logs locais para suporte.
+- Atualização manual via GitHub Releases.
 
-O ambiente real de teste principal usa um DVR Intelbras MHDX 1004 com cinco câmeras Intelbras. Quatro câmeras são analógicas via DVR e uma câmera é IP/ONVIF exposta pelo sistema.
+## Configuração local de desenvolvimento
 
-## Configuração local
-
-As credenciais do DVR não ficam no código-fonte. Para testar localmente, configure o arquivo `local.properties` na raiz do projeto:
+As credenciais de desenvolvimento não ficam no código-fonte. Para testar localmente, configure o arquivo `local.properties` na raiz do projeto:
 
 ```properties
 sdk.dir=C\:\\Users\\SEU_USUARIO\\AppData\\Local\\Android\\Sdk

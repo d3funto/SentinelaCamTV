@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1240" viewBox="0 0 1200 1240">
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071821"/>
+      <stop offset="1" stop-color="#102C38"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7CE7FF"/>
+      <stop offset="1" stop-color="#27D3FF"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1240" fill="#041017"/>
+  <text x="60" y="72" font-family="Arial, sans-serif" font-size="34" fill="#EAF8FC" font-weight="700">Sentinela Cam TV - pre-release visual</text>
+  <text x="60" y="108" font-family="Arial, sans-serif" font-size="18" fill="#AED0D9">Previa fora do app: escolha uma direcao antes de converter para icone e banner oficiais.</text>
+
+  <!-- Option 1 -->
+  <g transform="translate(60 155)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="22" fill="#EAF8FC" font-weight="700">Opcao 1 - Olho tecnico + mosaico</text>
+    <g transform="translate(0 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="180" height="180" rx="28" fill="url(#panel)" stroke="#27D3FF" stroke-width="5"/>
+      <path d="M34 92 C56 52, 124 52, 146 92 C124 132, 56 132, 34 92 Z" fill="none" stroke="url(#cyan)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="90" cy="92" r="24" fill="#27D3FF"/>
+      <circle cx="90" cy="92" r="11" fill="#071821"/>
+      <rect x="42" y="132" width="28" height="18" fill="#173946" stroke="#7CE7FF" stroke-width="3"/>
+      <rect x="76" y="132" width="28" height="18" fill="#173946" stroke="#7CE7FF" stroke-width="3"/>
+      <rect x="110" y="132" width="28" height="18" fill="#173946" stroke="#7CE7FF" stroke-width="3"/>
+    </g>
+    <g transform="translate(230 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="520" height="292" rx="0" fill="#071821" stroke="#27D3FF" stroke-width="5"/>
+      <rect x="32" y="34" width="138" height="82" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="190" y="34" width="138" height="82" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="348" y="34" width="138" height="82" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="82" y="148" width="170" height="96" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="288" y="148" width="170" height="96" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <path d="M190 196 C224 142, 296 142, 330 196 C296 250, 224 250, 190 196 Z" fill="#071821" stroke="url(#cyan)" stroke-width="10" stroke-linejoin="round"/>
+      <circle cx="260" cy="196" r="24" fill="#27D3FF"/>
+      <circle cx="260" cy="196" r="10" fill="#071821"/>
+    </g>
+  </g>
+
+  <!-- Option 2 -->
+  <g transform="translate(60 510)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="22" fill="#EAF8FC" font-weight="700">Opcao 2 - Operador observando cameras</text>
+    <g transform="translate(0 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="180" height="180" rx="28" fill="url(#panel)" stroke="#27D3FF" stroke-width="5"/>
+      <rect x="34" y="36" width="54" height="42" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="98" y="36" width="48" height="42" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="42" y="88" width="64" height="44" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <circle cx="122" cy="112" r="18" fill="#27D3FF"/>
+      <path d="M92 154 C100 132, 144 132, 152 154 Z" fill="#27D3FF"/>
+    </g>
+    <g transform="translate(230 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="520" height="292" rx="0" fill="#071821" stroke="#27D3FF" stroke-width="5"/>
+      <rect x="36" y="38" width="132" height="78" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="190" y="38" width="132" height="78" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="344" y="38" width="132" height="78" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="78" y="146" width="148" height="92" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="268" y="146" width="148" height="92" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <circle cx="252" cy="206" r="22" fill="#27D3FF"/>
+      <path d="M204 260 C216 226, 288 226, 300 260 Z" fill="#27D3FF"/>
+    </g>
+  </g>
+
+  <!-- Option 3 -->
+  <g transform="translate(60 865)">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="22" fill="#EAF8FC" font-weight="700">Opcao 3 - Mosaico com foco de vigilancia</text>
+    <g transform="translate(0 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="180" height="180" rx="28" fill="url(#panel)" stroke="#27D3FF" stroke-width="5"/>
+      <rect x="32" y="36" width="54" height="44" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="96" y="36" width="54" height="44" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="32" y="92" width="54" height="44" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="96" y="92" width="54" height="44" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <path d="M64 98 C82 70, 118 70, 136 98 C118 126, 82 126, 64 98 Z" fill="#071821" stroke="#27D3FF" stroke-width="8"/>
+      <circle cx="100" cy="98" r="14" fill="#27D3FF"/>
+      <circle cx="100" cy="98" r="6" fill="#071821"/>
+    </g>
+    <g transform="translate(230 28)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="520" height="292" rx="0" fill="#071821" stroke="#27D3FF" stroke-width="5"/>
+      <rect x="34" y="34" width="142" height="86" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="198" y="34" width="142" height="86" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="362" y="34" width="84" height="86" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="34" y="146" width="206" height="98" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <rect x="262" y="146" width="184" height="98" fill="#122F3B" stroke="#7CE7FF" stroke-width="4"/>
+      <path d="M330 196 C356 158, 418 158, 444 196 C418 234, 356 234, 330 196 Z" fill="#071821" stroke="#27D3FF" stroke-width="10"/>
+      <circle cx="387" cy="196" r="20" fill="#27D3FF"/>
+      <circle cx="387" cy="196" r="8" fill="#071821"/>
+    </g>
+  </g>
+</svg>

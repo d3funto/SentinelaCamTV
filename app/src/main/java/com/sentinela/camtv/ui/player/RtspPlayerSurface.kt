@@ -364,10 +364,11 @@ private fun PlayerConnectionState.logLabel(): String = when (this) {
     PlayerConnectionState.Playing -> "reproduzindo"
     is PlayerConnectionState.Reconnecting -> "reconectando"
     PlayerConnectionState.NetworkOffline -> "rede offline"
-    PlayerConnectionState.AuthenticationFailed -> "autenticacao"
-    PlayerConnectionState.Timeout -> "timeout"
+    PlayerConnectionState.ConnectionRefused -> "conexão recusada"
+    PlayerConnectionState.AuthenticationFailed -> "autenticação"
+    PlayerConnectionState.Timeout -> "tempo esgotado"
     PlayerConnectionState.UnsupportedCodec -> "codec"
-    PlayerConnectionState.UdpLikelyBlocked -> "udp instavel"
+    PlayerConnectionState.UdpLikelyBlocked -> "udp instável"
     is PlayerConnectionState.UnknownError -> "erro"
 }
 

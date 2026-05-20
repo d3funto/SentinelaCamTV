@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -27,6 +28,21 @@ val sentinelaDvrRtspPort = sentinelaLocalProperty(
     defaultValue = "554",
 ).toIntOrNull()?.toString() ?: "554"
 
+val releaseSigningPropertiesFile = File(
+    System.getProperty("user.home"),
+    "Documents/SentinelaCamTV/release-signing/keystore.properties",
+)
+val releaseSigningProperties = Properties().apply {
+    if (releaseSigningPropertiesFile.isFile) {
+        releaseSigningPropertiesFile.inputStream().use(::load)
+    }
+}
+val hasReleaseSigning = releaseSigningPropertiesFile.isFile
+
+fun releaseSigningProperty(name: String): String =
+    releaseSigningProperties.getProperty(name)
+        ?: error("Campo '$name' ausente em ${releaseSigningPropertiesFile.absolutePath}")
+
 android {
     namespace = "com.sentinela.camtv"
     compileSdk = 36
@@ -36,34 +52,85 @@ android {
         minSdk = 23
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField(
             "String",
             "SENTINELA_DVR_HOST",
-            buildConfigString(sentinelaLocalProperty("sentinela.dvr.host")),
+            buildConfigString(""),
         )
         buildConfigField(
             "String",
             "SENTINELA_DVR_USERNAME",
-            buildConfigString(sentinelaLocalProperty("sentinela.dvr.username")),
+            buildConfigString(""),
         )
         buildConfigField(
             "String",
             "SENTINELA_DVR_PASSWORD",
-            buildConfigString(sentinelaLocalProperty("sentinela.dvr.password")),
+            buildConfigString(""),
         )
         buildConfigField(
             "int",
             "SENTINELA_DVR_RTSP_PORT",
-            sentinelaDvrRtspPort,
+            "554",
+        )
+        buildConfigField(
+            "boolean",
+            "SEED_DEBUG_CAMERAS",
+            "false",
         )
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = File(releaseSigningProperty("storeFile"))
+                storePassword = releaseSigningProperty("storePassword")
+                keyAlias = releaseSigningProperty("keyAlias")
+                keyPassword = releaseSigningProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "SENTINELA_DVR_HOST",
+                buildConfigString(sentinelaLocalProperty("sentinela.dvr.host")),
+            )
+            buildConfigField(
+                "String",
+                "SENTINELA_DVR_USERNAME",
+                buildConfigString(sentinelaLocalProperty("sentinela.dvr.username")),
+            )
+            buildConfigField(
+                "String",
+                "SENTINELA_DVR_PASSWORD",
+                buildConfigString(sentinelaLocalProperty("sentinela.dvr.password")),
+            )
+            buildConfigField(
+                "int",
+                "SENTINELA_DVR_RTSP_PORT",
+                sentinelaDvrRtspPort,
+            )
+            buildConfigField(
+                "boolean",
+                "SEED_DEBUG_CAMERAS",
+                "true",
+            )
+        }
         release {
+            buildConfigField(
+                "boolean",
+                "SEED_DEBUG_CAMERAS",
+                "false",
+            )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -75,7 +142,7 @@ android {
         abi {
             isEnable = true
             reset()
-            include("armeabi-v7a", "arm64-v8a")
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
             isUniversalApk = true
         }
     }

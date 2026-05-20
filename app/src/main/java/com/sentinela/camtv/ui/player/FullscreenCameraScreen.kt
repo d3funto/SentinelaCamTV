@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.sentinela.camtv.player.IntelbrasRtspUrlBuilder
 import com.sentinela.camtv.ui.common.QuickMenu
 import com.sentinela.camtv.ui.common.QuickMenuAction
-import com.sentinela.camtv.ui.labels.activationLabel
 import com.sentinela.camtv.ui.labels.audioLabel
+import com.sentinela.camtv.ui.labels.infoMenuLabel
 import com.sentinela.camtv.ui.labels.streamQualityLabel
 import com.sentinela.camtv.ui.labels.transmissionModeMenuLabel
 
@@ -128,10 +128,10 @@ private fun FullscreenQuickMenu(
         actions = listOf(
             QuickMenuAction(audioLabel(state.audioMode), onToggleAudio),
             QuickMenuAction(streamQualityLabel(state.streamQuality), onToggleStreamQuality),
-            QuickMenuAction("Informações: ${activationLabel(state.showInfo)}", onToggleInfo),
+            QuickMenuAction(infoMenuLabel(state.showInfo), onToggleInfo),
             QuickMenuAction(transmissionModeMenuLabel(state.transmissionMode), onToggleTransmissionMode),
             QuickMenuAction("Ir para início", onOpenHome),
-            QuickMenuAction("Ir para ajustes", onOpenSettings),
+            QuickMenuAction("Ir para suporte", onOpenSettings),
             QuickMenuAction("Sair do app", onExitApp),
         ),
         modifier = modifier,

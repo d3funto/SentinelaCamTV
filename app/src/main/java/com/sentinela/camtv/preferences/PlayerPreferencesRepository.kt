@@ -23,11 +23,9 @@ class PlayerPreferencesRepository(
             showPlayerInfo = preferences[SHOW_PLAYER_INFO] ?: true,
             showMosaicInfo = preferences[SHOW_MOSAIC_INFO] ?: preferences[SHOW_PLAYER_INFO] ?: true,
             showFullscreenInfo = preferences[SHOW_FULLSCREEN_INFO] ?: preferences[SHOW_PLAYER_INFO] ?: true,
-            fullscreenAudioEnabled = preferences[FULLSCREEN_AUDIO_ENABLED] ?: true,
             globalTransmissionMode = preferences[GLOBAL_TRANSMISSION_MODE]
                 ?.let { value -> runCatching { TransmissionMode.valueOf(value) }.getOrNull() }
                 ?: TransmissionMode.MENOR_LATENCIA,
-            autoStartOnBoot = preferences[AUTO_START_ON_BOOT] ?: false,
         )
     }
 
@@ -53,21 +51,9 @@ class PlayerPreferencesRepository(
         }
     }
 
-    override suspend fun setFullscreenAudioEnabled(fullscreenAudioEnabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[FULLSCREEN_AUDIO_ENABLED] = fullscreenAudioEnabled
-        }
-    }
-
     override suspend fun setGlobalTransmissionMode(transmissionMode: TransmissionMode) {
         dataStore.edit { preferences ->
             preferences[GLOBAL_TRANSMISSION_MODE] = transmissionMode.name
-        }
-    }
-
-    override suspend fun setAutoStartOnBoot(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[AUTO_START_ON_BOOT] = enabled
         }
     }
 
@@ -75,9 +61,7 @@ class PlayerPreferencesRepository(
         val SHOW_PLAYER_INFO = booleanPreferencesKey("show_player_info")
         val SHOW_MOSAIC_INFO = booleanPreferencesKey("show_mosaic_info")
         val SHOW_FULLSCREEN_INFO = booleanPreferencesKey("show_fullscreen_info")
-        val FULLSCREEN_AUDIO_ENABLED = booleanPreferencesKey("fullscreen_audio_enabled")
         val GLOBAL_TRANSMISSION_MODE = stringPreferencesKey("global_transmission_mode")
-        val AUTO_START_ON_BOOT = booleanPreferencesKey("auto_start_on_boot")
     }
 }
 

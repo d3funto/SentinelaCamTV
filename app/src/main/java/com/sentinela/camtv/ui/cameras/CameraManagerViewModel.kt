@@ -3,16 +3,20 @@ package com.sentinela.camtv.ui.cameras
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sentinela.camtv.data.camera.CameraRepository
-import com.sentinela.camtv.data.onvif.OnvifEndpointNormalizer
+import com.sentinela.camtv.data.camera.RtspUrlSanitizer
 import com.sentinela.camtv.data.onvif.OnvifRepository
 import com.sentinela.camtv.data.onvif.OnvifProfileSelector
 import com.sentinela.camtv.domain.Camera
+import com.sentinela.camtv.player.RtspConnectionTestResult
+import com.sentinela.camtv.player.RtspConnectionTester
+import com.sentinela.camtv.player.userMessage
 import com.sentinela.onvif.DiscoveredOnvifDevice
 import com.sentinela.onvif.OnvifCredentials
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -20,11 +24,16 @@ data class CameraManagerUiState(
     val cameras: List<Camera> = emptyList(),
     val discoveredDevices: List<DiscoveredOnvifDevice> = emptyList(),
     val selectedDeviceKey: String? = null,
-    val manualOnvifAddress: String = "",
     val username: String = "",
     val password: String = "",
+    val rtspName: String = "",
+    val rtspMainUrl: String = "",
+    val rtspSubUrl: String = "",
+    val rtspUsername: String = "",
+    val rtspPassword: String = "",
     val scanning: Boolean = false,
     val saving: Boolean = false,
+    val rtspConnecting: Boolean = false,
     val authDialogMessage: String? = null,
     val statusMessage: String? = null,
 ) {
@@ -32,32 +41,53 @@ data class CameraManagerUiState(
         get() = discoveredDevices.firstOrNull { device -> device.stableKey() == selectedDeviceKey }
 
     val busy: Boolean
-        get() = scanning || saving
+        get() = scanning || saving || rtspConnecting
 }
 
 class CameraManagerViewModel(
     private val cameraRepository: CameraRepository,
     private val onvifRepository: OnvifRepository,
+    private val rtspConnectionTester: RtspConnectionTester,
+    private val rtspCameraDraftRepository: RtspCameraDraftRepository,
 ) : ViewModel() {
     private val discoveredDevices = MutableStateFlow<List<DiscoveredOnvifDevice>>(emptyList())
     private val selectedDeviceKey = MutableStateFlow<String?>(null)
-    private val manualOnvifAddress = MutableStateFlow("")
     private val username = MutableStateFlow("")
     private val password = MutableStateFlow("")
+    private val rtspName = MutableStateFlow("")
+    private val rtspMainUrl = MutableStateFlow("")
+    private val rtspSubUrl = MutableStateFlow("")
+    private val rtspUsername = MutableStateFlow("")
+    private val rtspPassword = MutableStateFlow("")
     private val scanning = MutableStateFlow(false)
     private val saving = MutableStateFlow(false)
+    private val rtspConnecting = MutableStateFlow(false)
     private val authDialogMessage = MutableStateFlow<String?>(null)
     private val statusMessage = MutableStateFlow<String?>(null)
+
+    init {
+        viewModelScope.launch {
+            val draft = rtspCameraDraftRepository.observeDraft().first()
+            rtspName.value = draft.name
+            rtspMainUrl.value = draft.mainUrl
+            rtspSubUrl.value = draft.subUrl
+        }
+    }
 
     val state: StateFlow<CameraManagerUiState> = combine(
         cameraRepository.observeAllCameras(),
         discoveredDevices,
         selectedDeviceKey,
-        manualOnvifAddress,
         username,
         password,
+        rtspName,
+        rtspMainUrl,
+        rtspSubUrl,
+        rtspUsername,
+        rtspPassword,
         scanning,
         saving,
+        rtspConnecting,
         authDialogMessage,
         statusMessage,
     ) { values ->
@@ -69,13 +99,18 @@ class CameraManagerViewModel(
             cameras = cameras,
             discoveredDevices = devices,
             selectedDeviceKey = values[2] as String?,
-            manualOnvifAddress = values[3] as String,
-            username = values[4] as String,
-            password = values[5] as String,
-            scanning = values[6] as Boolean,
-            saving = values[7] as Boolean,
-            authDialogMessage = values[8] as String?,
-            statusMessage = values[9] as String?,
+            username = values[3] as String,
+            password = values[4] as String,
+            rtspName = values[5] as String,
+            rtspMainUrl = values[6] as String,
+            rtspSubUrl = values[7] as String,
+            rtspUsername = values[8] as String,
+            rtspPassword = values[9] as String,
+            scanning = values[10] as Boolean,
+            saving = values[11] as Boolean,
+            rtspConnecting = values[12] as Boolean,
+            authDialogMessage = values[13] as String?,
+            statusMessage = values[14] as String?,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -112,30 +147,32 @@ class CameraManagerViewModel(
         username.value = value
     }
 
-    fun updateManualOnvifAddress(value: String) {
-        manualOnvifAddress.value = value
-    }
-
     fun updatePassword(value: String) {
         password.value = value
     }
 
-    fun useManualOnvifAddress() {
-        val normalized = OnvifEndpointNormalizer.normalize(manualOnvifAddress.value)
-        if (normalized == null) {
-            statusMessage.value = "Informe o IP ou URL ONVIF do dispositivo."
-            return
-        }
-        val manualDevice = DiscoveredOnvifDevice(
-            endpointReference = "manual:$normalized",
-            types = listOf("dn:NetworkVideoTransmitter"),
-            xAddrs = listOf(normalized),
-            scopes = listOf("onvif://www.onvif.org/name/ONVIF_manual"),
-        )
-        discoveredDevices.value = (listOf(manualDevice) + discoveredDevices.value)
-            .distinctBy { device -> device.stableKey() }
-        selectedDeviceKey.value = manualDevice.stableKey()
-        statusMessage.value = "Endereço ONVIF manual selecionado."
+    fun updateRtspName(value: String) {
+        rtspName.value = value
+    }
+
+    fun updateRtspMainUrl(value: String) {
+        rtspMainUrl.value = value
+    }
+
+    fun updateRtspSubUrl(value: String) {
+        rtspSubUrl.value = value
+    }
+
+    fun updateRtspUsername(value: String) {
+        rtspUsername.value = value
+    }
+
+    fun updateRtspPassword(value: String) {
+        rtspPassword.value = value
+    }
+
+    fun copyRtspMainUrlToSubUrl() {
+        rtspSubUrl.value = rtspMainUrl.value
     }
 
     fun saveSelectedOnvifCamera() {
@@ -189,7 +226,7 @@ class CameraManagerViewModel(
                     position = currentState.cameras.size,
                 )
             }.onSuccess {
-                statusMessage.value = "Câmera ONVIF salva."
+                statusMessage.value = "Câmera ONVIF conectada."
             }.onFailure { error ->
                 val message = error.toOnvifUserMessage()
                 if (error.isLikelyAuthenticationError()) {
@@ -202,26 +239,95 @@ class CameraManagerViewModel(
         }
     }
 
-    fun saveManualRtspCamera(
-        name: String,
-        mainRtspUrl: String,
-        subRtspUrl: String?,
-    ) {
+    fun connectManualRtspCamera() {
         viewModelScope.launch {
+            val validation = RtspCameraFormValidator.validate(
+                name = state.value.rtspName,
+                mainRtspUrl = state.value.rtspMainUrl,
+                subRtspUrl = state.value.rtspSubUrl,
+                username = state.value.rtspUsername,
+                password = state.value.rtspPassword,
+            )
+            if (validation is RtspCameraFormValidation.Invalid) {
+                statusMessage.value = validation.message
+                return@launch
+            }
+            val form = (validation as RtspCameraFormValidation.Valid).form
+            val draft = RtspCameraDraft(
+                name = form.name,
+                mainUrl = form.mainRtspUrl,
+                subUrl = form.subRtspUrl.orEmpty(),
+            )
+
+            rtspCameraDraftRepository.saveDraft(draft)
+            rtspConnecting.value = true
+            statusMessage.value = "Conectando RTSP..."
+
+            val mainResult = testRtspUrl(
+                url = form.mainRtspUrl,
+                username = form.username,
+                password = form.password,
+                streamName = "Fluxo principal",
+            )
+            if (mainResult is RtspConnectionTestResult.Failure) {
+                statusMessage.value = mainResult.userMessage("Fluxo principal")
+                rtspConnecting.value = false
+                return@launch
+            }
+
+            val subUrl = form.subRtspUrl
+            if (!subUrl.isNullOrBlank()) {
+                val subResult = testRtspUrl(
+                    url = subUrl,
+                    username = form.username,
+                    password = form.password,
+                    streamName = "Fluxo secundário",
+                )
+                if (subResult is RtspConnectionTestResult.Failure) {
+                    statusMessage.value = subResult.userMessage("Fluxo secundário")
+                    rtspConnecting.value = false
+                    return@launch
+                }
+            }
+
             runCatching {
                 cameraRepository.saveManualRtspCamera(
                     id = "rtsp-${System.currentTimeMillis()}",
-                    name = name.ifBlank { "Camera RTSP" },
-                    rtspUrl = mainRtspUrl,
-                    subRtspUrl = subRtspUrl?.ifBlank { null },
+                    name = form.name,
+                    rtspUrl = form.mainRtspUrl,
+                    subRtspUrl = form.subRtspUrl,
+                    username = form.username,
+                    password = form.password,
                     position = state.value.cameras.size,
                 )
             }.onSuccess {
-                statusMessage.value = "Camera RTSP salva."
+                rtspName.value = draft.name
+                rtspMainUrl.value = draft.mainUrl
+                rtspSubUrl.value = draft.subUrl
+                rtspPassword.value = ""
+                statusMessage.value = "Câmera RTSP conectada. Vá para Ver câmeras para visualizar."
             }.onFailure { error ->
                 authDialogMessage.value = "Não foi possível salvar a câmera: ${error.message ?: "URL inválida"}"
             }
+
+            rtspConnecting.value = false
         }
+    }
+
+    private suspend fun testRtspUrl(
+        url: String,
+        username: String?,
+        password: String?,
+        streamName: String,
+    ): RtspConnectionTestResult {
+        statusMessage.value = "Conectando $streamName..."
+        return rtspConnectionTester.test(
+            RtspUrlSanitizer.withCredentials(
+                sanitizedUrl = url,
+                username = username,
+                password = password,
+            ),
+        )
     }
 
     fun dismissAuthDialog() {

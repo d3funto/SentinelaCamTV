@@ -11,6 +11,9 @@ data class SanitizedRtspUrl(
 object RtspUrlSanitizer {
     fun sanitize(rawUrl: String): SanitizedRtspUrl {
         val uri = URI(rawUrl.trim())
+        require(uri.scheme.equals("rtsp", ignoreCase = true) && !uri.host.isNullOrBlank()) {
+            "URL RTSP inválida"
+        }
         val userInfo = uri.userInfo
         val username = userInfo?.substringBefore(':')?.takeIf { it.isNotBlank() }
         val password = userInfo

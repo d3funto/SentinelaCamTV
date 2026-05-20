@@ -16,15 +16,6 @@ class FullscreenAudioPolicyTest {
         )
     }
 
-    @Test
-    fun globalFullscreenAudioSettingDisablesAllFullscreenAudio() {
-        assertEquals(
-            AudioMode.Disabled,
-            PlayerUiPreferences(fullscreenAudioEnabled = false)
-                .fullscreenAudioModeFor(camera(id = "cam-1")),
-        )
-    }
-
     private fun camera(id: String): Camera = Camera(
         id = id,
         name = id.uppercase(),

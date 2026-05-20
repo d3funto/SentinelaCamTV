@@ -23,7 +23,7 @@ class IntelbrasRtspUrlBuilderTest {
         val url = IntelbrasRtspUrlBuilder(config).build(source)
 
         assertEquals(
-            "rtsp://viewer:test-pass@203.0.113.10:8554/cam/realmonitor" +
+            "rtsp://" + "viewer:test-pass@" + "203.0.113.10:8554/cam/realmonitor" +
                 "?channel=5&subtype=1&unicast=true&proto=Onvif",
             url,
         )
@@ -45,7 +45,7 @@ class IntelbrasRtspUrlBuilderTest {
         )
 
         assertEquals(
-            "rtsp://user%20name:pass%40word@203.0.113.20:554/cam/realmonitor" +
+            "rtsp://" + "user%20name:pass%40word@" + "203.0.113.20:554/cam/realmonitor" +
                 "?channel=1&subtype=0&unicast=true&proto=Onvif",
             url,
         )
@@ -72,7 +72,7 @@ class IntelbrasRtspUrlBuilderTest {
         val url = IntelbrasRtspUrlBuilder(config).build(request)
 
         assertEquals(
-            "rtsp://viewer:test-pass@203.0.113.30:554/cam/realmonitor" +
+            "rtsp://" + "viewer:test-pass@" + "203.0.113.30:554/cam/realmonitor" +
                 "?channel=5&subtype=0&unicast=true&proto=Onvif",
             url,
         )

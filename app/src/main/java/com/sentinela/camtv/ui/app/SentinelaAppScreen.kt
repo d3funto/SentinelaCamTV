@@ -24,7 +24,6 @@ import com.sentinela.camtv.di.SentinelaViewModelFactory
 import com.sentinela.camtv.ui.cameras.CameraManagerScreen
 import com.sentinela.camtv.ui.cameras.CameraManagerViewModel
 import com.sentinela.camtv.ui.home.HomeScreen
-import com.sentinela.camtv.ui.home.HomeViewModel
 import com.sentinela.camtv.ui.mosaic.MosaicScreen
 import com.sentinela.camtv.ui.settings.SettingsScreen
 import com.sentinela.camtv.ui.settings.SettingsViewModel
@@ -44,10 +43,7 @@ fun SentinelaAppScreen() {
     when (appState.destination) {
         AppDestination.Loading -> LoadingScreen()
         AppDestination.Home -> {
-            val homeViewModel: HomeViewModel = viewModel(factory = viewModelFactory)
-            val homeState by homeViewModel.state.collectAsState()
             HomeScreen(
-                canOpenMosaic = homeState.canOpenMosaic,
                 onOpenMosaic = appViewModel::openMosaic,
                 onOpenCameras = appViewModel::openCameras,
                 onOpenSettings = appViewModel::openSettings,
@@ -68,11 +64,16 @@ fun SentinelaAppScreen() {
                 state = cameraManagerState,
                 onDiscoverOnvif = cameraManagerViewModel::discoverOnvifDevices,
                 onSelectOnvifDevice = cameraManagerViewModel::selectDiscoveredDevice,
-                onManualOnvifAddressChanged = cameraManagerViewModel::updateManualOnvifAddress,
-                onUseManualOnvifAddress = cameraManagerViewModel::useManualOnvifAddress,
                 onUsernameChanged = cameraManagerViewModel::updateUsername,
                 onPasswordChanged = cameraManagerViewModel::updatePassword,
                 onSaveSelectedOnvifCamera = cameraManagerViewModel::saveSelectedOnvifCamera,
+                onRtspNameChanged = cameraManagerViewModel::updateRtspName,
+                onRtspMainUrlChanged = cameraManagerViewModel::updateRtspMainUrl,
+                onRtspSubUrlChanged = cameraManagerViewModel::updateRtspSubUrl,
+                onRtspUsernameChanged = cameraManagerViewModel::updateRtspUsername,
+                onRtspPasswordChanged = cameraManagerViewModel::updateRtspPassword,
+                onCopyRtspMainUrlToSubUrl = cameraManagerViewModel::copyRtspMainUrlToSubUrl,
+                onConnectManualRtspCamera = cameraManagerViewModel::connectManualRtspCamera,
                 onDismissAuthDialog = cameraManagerViewModel::dismissAuthDialog,
                 onBack = appViewModel::goBack,
             )
@@ -82,13 +83,11 @@ fun SentinelaAppScreen() {
             val settingsState by settingsViewModel.state.collectAsState()
             SettingsScreen(
                 state = settingsState,
-                onToggleMosaicInfo = settingsViewModel::toggleMosaicInfo,
-                onToggleFullscreenInfo = settingsViewModel::toggleFullscreenInfo,
-                onToggleFullscreenAudio = settingsViewModel::toggleFullscreenAudio,
-                onToggleTransmissionMode = settingsViewModel::toggleTransmissionMode,
-                onToggleAutoStartOnBoot = settingsViewModel::toggleAutoStartOnBoot,
                 onExportSupportLogs = settingsViewModel::exportSupportLogs,
                 onExportCrashReport = settingsViewModel::exportCrashReport,
+                onCheckForUpdate = settingsViewModel::checkForUpdate,
+                onDownloadUpdate = settingsViewModel::downloadUpdate,
+                onInstallDownloadedUpdate = settingsViewModel::installDownloadedUpdate,
                 onOpenHome = appViewModel::openHome,
                 onBack = appViewModel::goBack,
             )

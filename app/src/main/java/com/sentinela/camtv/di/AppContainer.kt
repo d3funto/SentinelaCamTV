@@ -9,13 +9,19 @@ import com.sentinela.camtv.data.onvif.AndroidWsDiscoveryClient
 import com.sentinela.camtv.data.onvif.DefaultOnvifRepository
 import com.sentinela.camtv.data.onvif.OnvifRepository
 import com.sentinela.camtv.data.security.CredentialCipher
+import com.sentinela.camtv.data.update.AppUpdateInstaller
+import com.sentinela.camtv.data.update.GitHubReleaseUpdateRepository
+import com.sentinela.camtv.data.update.UpdateRepository
 import com.sentinela.camtv.logging.CrashReporter
 import com.sentinela.camtv.logging.FileTimberTree
 import com.sentinela.camtv.logging.LogRepository
 import com.sentinela.camtv.logging.LocalLogRepository
-import com.sentinela.camtv.preferences.PlayerPreferencesRepository
+import com.sentinela.camtv.player.Media3RtspConnectionTester
+import com.sentinela.camtv.player.RtspConnectionTester
 import com.sentinela.camtv.preferences.SettingsRepository
 import com.sentinela.camtv.preferences.playerPreferencesRepository
+import com.sentinela.camtv.ui.cameras.RtspCameraDraftRepository
+import com.sentinela.camtv.ui.cameras.rtspCameraDraftRepository
 import com.sentinela.onvif.OnvifSoapClient
 
 class AppContainer(
@@ -47,8 +53,14 @@ class AppContainer(
 
     val settingsRepository: SettingsRepository = playerPreferencesRepository(appContext)
 
-    val playerPreferencesRepository: PlayerPreferencesRepository =
-        settingsRepository as PlayerPreferencesRepository
+    val rtspCameraDraftRepository: RtspCameraDraftRepository =
+        rtspCameraDraftRepository(appContext)
+
+    val rtspConnectionTester: RtspConnectionTester = Media3RtspConnectionTester(appContext)
+
+    val updateRepository: UpdateRepository = GitHubReleaseUpdateRepository(appContext)
+
+    val appUpdateInstaller: AppUpdateInstaller = AppUpdateInstaller(appContext)
 
     val onvifRepository: OnvifRepository = DefaultOnvifRepository(
         wsDiscoveryClient = AndroidWsDiscoveryClient(appContext),

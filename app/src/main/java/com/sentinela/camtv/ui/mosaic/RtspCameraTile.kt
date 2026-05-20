@@ -1,18 +1,21 @@
 package com.sentinela.camtv.ui.mosaic
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -20,13 +23,22 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sentinela.camtv.player.CameraStreamRequest
 import com.sentinela.camtv.ui.player.RtspPlayerSurface
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RtspCameraTile(
     request: CameraStreamRequest,
@@ -37,10 +49,14 @@ fun RtspCameraTile(
     focusEnabled: Boolean,
     showFocusIndicator: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
+    var confirmKeyLongClickJob by remember { mutableStateOf<Job?>(null) }
+    var confirmKeyLongClickHandled by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(requestInitialFocus, focusEnabled) {
         if (requestInitialFocus && focusEnabled) {
@@ -50,9 +66,43 @@ fun RtspCameraTile(
 
     val showFocusedBorder = focused && focusEnabled && showFocusIndicator
 
+    DisposableEffect(Unit) {
+        onDispose {
+            confirmKeyLongClickJob?.cancel()
+        }
+    }
+
     Box(
         modifier = modifier
             .focusRequester(focusRequester)
+            .onPreviewKeyEvent { keyEvent ->
+                if (!focusEnabled || onLongClick == null || !keyEvent.key.isConfirmKey()) {
+                    return@onPreviewKeyEvent false
+                }
+
+                when (keyEvent.type) {
+                    KeyEventType.KeyDown -> {
+                        if (confirmKeyLongClickJob == null && !confirmKeyLongClickHandled) {
+                            confirmKeyLongClickJob = coroutineScope.launch {
+                                delay(CONFIRM_KEY_LONG_PRESS_DELAY_MS)
+                                confirmKeyLongClickHandled = true
+                                onLongClick()
+                            }
+                        }
+                        confirmKeyLongClickHandled
+                    }
+
+                    KeyEventType.KeyUp -> {
+                        val handled = confirmKeyLongClickHandled
+                        confirmKeyLongClickJob?.cancel()
+                        confirmKeyLongClickJob = null
+                        confirmKeyLongClickHandled = false
+                        handled
+                    }
+
+                    else -> false
+                }
+            }
             .border(
                 width = if (showFocusedBorder || selectedForReorder) 4.dp else 1.dp,
                 color = when {
@@ -64,9 +114,10 @@ fun RtspCameraTile(
             .onFocusChanged { focusState ->
                 focused = focusState.isFocused
             }
-            .clickable(
+            .combinedClickable(
                 enabled = focusEnabled,
                 onClick = onClick,
+                onLongClick = onLongClick,
             )
             .focusable(enabled = focusEnabled),
     ) {
@@ -96,3 +147,10 @@ fun RtspCameraTile(
         }
     }
 }
+
+private const val CONFIRM_KEY_LONG_PRESS_DELAY_MS = 1_200L
+
+private fun Key.isConfirmKey(): Boolean =
+    this == Key.DirectionCenter ||
+        this == Key.Enter ||
+        this == Key.NumPadEnter

@@ -26,10 +26,13 @@ class SentinelaViewModelFactory(
         CameraManagerViewModel::class.java -> CameraManagerViewModel(
             cameraRepository = container.cameraRepository,
             onvifRepository = container.onvifRepository,
+            rtspConnectionTester = container.rtspConnectionTester,
+            rtspCameraDraftRepository = container.rtspCameraDraftRepository,
         )
         SettingsViewModel::class.java -> SettingsViewModel(
-            settingsRepository = container.settingsRepository,
             logRepository = container.logRepository,
+            updateRepository = container.updateRepository,
+            appUpdateInstaller = container.appUpdateInstaller,
         )
         else -> error("ViewModel sem factory manual: ${modelClass.name}")
     } as T

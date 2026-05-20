@@ -19,6 +19,9 @@ interface CameraDao {
     @Query("SELECT * FROM cameras WHERE id = :id LIMIT 1")
     suspend fun findById(id: String): CameraEntity?
 
+    @Query("SELECT id FROM cameras ORDER BY position ASC")
+    suspend fun orderedIds(): List<String>
+
     @Upsert
     suspend fun upsert(camera: CameraEntity)
 
@@ -30,4 +33,7 @@ interface CameraDao {
 
     @Query("UPDATE cameras SET authFailure = :authFailure WHERE id = :id")
     suspend fun updateAuthFailure(id: String, authFailure: Boolean)
+
+    @Query("DELETE FROM cameras WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

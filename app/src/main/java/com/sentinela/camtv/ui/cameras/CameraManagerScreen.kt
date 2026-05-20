@@ -44,11 +44,16 @@ fun CameraManagerScreen(
     state: CameraManagerUiState,
     onDiscoverOnvif: () -> Unit,
     onSelectOnvifDevice: (String) -> Unit,
-    onManualOnvifAddressChanged: (String) -> Unit,
-    onUseManualOnvifAddress: () -> Unit,
     onUsernameChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onSaveSelectedOnvifCamera: () -> Unit,
+    onRtspNameChanged: (String) -> Unit,
+    onRtspMainUrlChanged: (String) -> Unit,
+    onRtspSubUrlChanged: (String) -> Unit,
+    onRtspUsernameChanged: (String) -> Unit,
+    onRtspPasswordChanged: (String) -> Unit,
+    onCopyRtspMainUrlToSubUrl: () -> Unit,
+    onConnectManualRtspCamera: () -> Unit,
     onDismissAuthDialog: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -80,25 +85,16 @@ fun CameraManagerScreen(
                         modifier = Modifier.focusRequester(focusRequester),
                     )
                     CameraManagerActionButton(
-                        label = if (state.saving) "Salvando câmera ONVIF..." else "Salvar ONVIF selecionada",
+                        label = if (state.saving) {
+                            "Conectando ONVIF..."
+                        } else {
+                            "Conectar ONVIF selecionado"
+                        },
                         onClick = onSaveSelectedOnvifCamera,
                         enabled = !state.busy && state.selectedDevice != null,
                     )
-                    CameraManagerActionButton(
-                        label = "Usar endereço informado",
-                        onClick = onUseManualOnvifAddress,
-                        enabled = !state.busy,
-                    )
-
                     SectionTitle("Status")
                     BodyText(state.statusMessage ?: "Pronto")
-
-                    SectionTitle("Endereço ONVIF manual")
-                    CameraManagerTextField(
-                        label = "IP ou URL do serviço ONVIF",
-                        value = state.manualOnvifAddress,
-                        onValueChange = onManualOnvifAddressChanged,
-                    )
 
                     SectionTitle("Credenciais ONVIF")
                     CameraManagerTextField(
@@ -112,13 +108,48 @@ fun CameraManagerScreen(
                         onValueChange = onPasswordChanged,
                         password = true,
                     )
+
+                    SectionTitle("Adicionar por RTSP direto")
+                    CameraManagerTextField(
+                        label = "Nome",
+                        value = state.rtspName,
+                        onValueChange = onRtspNameChanged,
+                    )
+                    RtspMainUrlRow(
+                        value = state.rtspMainUrl,
+                        onValueChange = onRtspMainUrlChanged,
+                        onCopyBelow = onCopyRtspMainUrlToSubUrl,
+                        enabled = !state.busy,
+                    )
+                    CameraManagerTextField(
+                        label = "URL RTSP secundária",
+                        value = state.rtspSubUrl,
+                        onValueChange = onRtspSubUrlChanged,
+                    )
+                    CameraManagerTextField(
+                        label = "Usuário",
+                        value = state.rtspUsername,
+                        onValueChange = onRtspUsernameChanged,
+                    )
+                    CameraManagerTextField(
+                        label = "Senha",
+                        value = state.rtspPassword,
+                        onValueChange = onRtspPasswordChanged,
+                        password = true,
+                    )
+                    BodyText("Usuário e senha são salvos de forma criptografada neste aparelho.")
+                    CameraManagerActionButton(
+                        label = if (state.rtspConnecting) "Conectando..." else "Conectar",
+                        onClick = onConnectManualRtspCamera,
+                        enabled = !state.busy,
+                    )
                 }
 
                 Column(
                     modifier = Modifier.width(430.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SectionTitle("Câmeras salvas")
+                    SectionTitle("Câmeras conectadas")
                     BodyText("${state.cameras.size} câmera(s)")
                     state.cameras.take(6).forEach { camera ->
                         BodyText(camera.name)
@@ -148,6 +179,33 @@ fun CameraManagerScreen(
                 modifier = Modifier.align(Alignment.Center),
             )
         }
+    }
+}
+
+@Composable
+private fun RtspMainUrlRow(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onCopyBelow: () -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        CameraManagerTextField(
+            label = "URL RTSP principal",
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.weight(1f),
+        )
+        CameraManagerActionButton(
+            label = "Colar embaixo",
+            onClick = onCopyBelow,
+            enabled = enabled,
+            modifier = Modifier.width(150.dp),
+            fillWidth = false,
+        )
     }
 }
 
@@ -199,11 +257,12 @@ private fun CameraManagerActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    fillWidth: Boolean = true,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyUp && keyEvent.key.isConfirmKey()) {
                     onClick()
@@ -237,7 +296,7 @@ private fun AuthErrorDialog(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                text = "Falha ao salvar câmera",
+                text = "Falha ao conectar câmera",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
