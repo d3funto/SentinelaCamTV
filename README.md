@@ -2,69 +2,38 @@
 
 Sentinela Cam TV é um aplicativo open-source para visualizar câmeras de segurança em Android TV e Google TV.
 
-O foco do projeto é monitoramento local, sem anúncios, sem rastreamento, sem telemetria e sem dependência de nuvem. A prioridade técnica é rodar bem em TVs e TV Boxes modestas, especialmente aparelhos com cerca de 1 GB de RAM.
+Ele foi criado para monitoramento local, com foco em privacidade, simplicidade e bom funcionamento em TVs e TV Boxes com hardware modesto.
 
-## Princípios
+![Mosaico do Sentinela Cam TV](docs/images/mosaico-readme.png)
 
-- Sem anúncios.
-- Sem rastreamento.
-- Sem analytics.
-- Sem conta obrigatória.
-- Sem nuvem obrigatória.
-- Código aberto sob `GPL-3.0-or-later`.
-- Otimizado para controle remoto em Android TV / Google TV.
+## Principais recursos
 
-## Estado atual
-
-- Mosaico de câmeras.
-- Tela cheia a partir do mosaico.
-- Reprodução RTSP usando AndroidX Media3/ExoPlayer.
+- Visualização em mosaico.
+- Tela cheia para cada câmera.
 - Cadastro por RTSP direto.
-- Base inicial para descoberta ONVIF.
+- Descoberta e cadastro por ONVIF.
+- Atualização manual pelo GitHub Releases.
 - Logs locais para suporte.
-- Atualização manual via GitHub Releases.
-
-## Configuração local de desenvolvimento
-
-As credenciais de desenvolvimento não ficam no código-fonte. Para testar localmente, configure o arquivo `local.properties` na raiz do projeto:
-
-```properties
-sdk.dir=C\:\\Users\\SEU_USUARIO\\AppData\\Local\\Android\\Sdk
-
-sentinela.dvr.host=192.0.2.10
-sentinela.dvr.username=usuario
-sentinela.dvr.password=senha
-sentinela.dvr.rtspPort=554
-```
-
-`local.properties` é ignorado pelo Git. Não envie IPs internos, usuários, senhas ou URLs RTSP reais para o repositório.
-
-## Desenvolvimento
-
-Requisitos recomendados:
-
-- Android Studio estável atual.
-- JDK incluído no Android Studio.
-- Android SDK Platform 36 instalado.
-- Dispositivo Android TV/Google TV real para validação.
-
-Comandos úteis:
-
-```powershell
-.\gradlew.bat :app:testDebugUnitTest --no-daemon --max-workers=1
-.\gradlew.bat :app:assembleDebug --no-daemon --max-workers=1
-```
-
-No Windows, se o terminal não encontrar Java, use temporariamente o JDK do Android Studio:
-
-```powershell
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
-```
+- Interface pensada para controle remoto.
 
 ## Privacidade
 
-Veja [PRIVACY.md](PRIVACY.md).
+O Sentinela Cam TV não usa anúncios, rastreamento, analytics, telemetria, Firebase, Google Play Services ou nuvem obrigatória.
+
+As câmeras são acessadas localmente. O aplicativo não envia imagens, credenciais ou dados das câmeras para servidores externos.
+
+## Download
+
+Baixe a versão mais recente na página de releases:
+
+https://github.com/d3funto/SentinelaCamTV/releases/latest
+
+## Estado do projeto
+
+O app está em desenvolvimento ativo. Algumas funções ainda podem mudar, e testes em diferentes modelos de TV Box são importantes.
+
+No momento, o projeto está em desenvolvimento individual. Relatos de bugs são bem-vindos pelas Issues, mas contribuições de código ainda não estão abertas.
 
 ## Licença
 
-Sentinela Cam TV é software livre licenciado sob `GPL-3.0-or-later`. Veja [LICENSE](LICENSE).
+Sentinela Cam TV é software livre licenciado sob `GPL-3.0-or-later`.
