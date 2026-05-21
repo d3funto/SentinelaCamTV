@@ -38,6 +38,7 @@ class GitHubReleaseUpdateRepository(
                     assetName = asset.name,
                     downloadUrl = asset.downloadUrl,
                     releasePageUrl = release.htmlUrl,
+                    changelog = release.body,
                 ),
             )
         }.recoverCatching { error ->
@@ -100,7 +101,7 @@ class GitHubReleaseUpdateRepository(
         val responseCode = connection.responseCode
         if (responseCode !in 200..299) {
             connection.disconnect()
-            error("GitHub respondeu com HTTP $responseCode.")
+            error("O site respondeu com HTTP $responseCode.")
         }
         return connection
     }
@@ -112,10 +113,10 @@ class GitHubReleaseUpdateRepository(
     private fun Throwable.toUserFacingMessage(): String {
         val details = message.orEmpty()
         return when {
-            details.contains("HTTP 404") -> "Nenhuma versão pública foi encontrada no GitHub."
-            details.contains("HTTP 403") -> "O GitHub limitou temporariamente a busca por atualização."
+            details.contains("HTTP 404") -> "Nenhuma versão pública foi encontrada no site."
+            details.contains("HTTP 403") -> "O site limitou temporariamente a busca por atualização."
             details.contains("APK compatível") -> details
-            details.contains("Unable to resolve host", ignoreCase = true) -> "Não foi possível acessar o GitHub."
+            details.contains("Unable to resolve host", ignoreCase = true) -> "Não foi possível acessar o site."
             else -> details.ifBlank { "Falha ao buscar atualização." }
         }
     }

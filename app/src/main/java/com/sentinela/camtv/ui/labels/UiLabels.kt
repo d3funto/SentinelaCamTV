@@ -24,8 +24,8 @@ fun streamQualityLabel(streamQuality: StreamQuality): String = when (streamQuali
 }
 
 fun transmissionModeLabel(transmissionMode: TransmissionMode): String = when (transmissionMode) {
-    TransmissionMode.MENOR_LATENCIA -> "menor latência"
-    TransmissionMode.QUALIDADE -> "estabilidade"
+    TransmissionMode.MENOR_LATENCIA -> "Menor latência"
+    TransmissionMode.QUALIDADE -> "Estabilidade"
 }
 
 fun transmissionModeMenuLabel(transmissionMode: TransmissionMode): String =

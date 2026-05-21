@@ -3,6 +3,7 @@ package com.sentinela.camtv.data.update
 data class GitHubRelease(
     val tagName: String,
     val htmlUrl: String,
+    val body: String,
     val assets: List<GitHubReleaseAsset>,
 )
 
@@ -16,6 +17,7 @@ data class AvailableUpdate(
     val assetName: String,
     val downloadUrl: String,
     val releasePageUrl: String,
+    val changelog: String,
 )
 
 data class DownloadedUpdate(

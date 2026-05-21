@@ -6,5 +6,6 @@ data class PlayerUiPreferences(
     val showPlayerInfo: Boolean = true,
     val showMosaicInfo: Boolean = true,
     val showFullscreenInfo: Boolean = true,
+    val fullscreenQuickMenuHintSeen: Boolean = false,
     val globalTransmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
 )

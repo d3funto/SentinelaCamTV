@@ -8,7 +8,7 @@ import java.io.IOException
 class OnvifEndpointPolicyTest {
     @Test
     fun allowsCleartextHttpForPrivateIpv4() {
-        val endpoint = "http://192.168.100.31/onvif/device_service"
+        val endpoint = "http://192.168.1.31/onvif/device_service"
 
         assertEquals(endpoint, OnvifEndpointPolicy.requireAllowedEndpoint(endpoint))
     }
@@ -32,7 +32,7 @@ class OnvifEndpointPolicyTest {
     @Test
     fun rejectsInvalidEndpoint() {
         val error = assertThrows(IOException::class.java) {
-            OnvifEndpointPolicy.requireAllowedEndpoint("192.168.100.31/onvif/device_service")
+            OnvifEndpointPolicy.requireAllowedEndpoint("192.168.1.31/onvif/device_service")
         }
 
         assertEquals("Endereço ONVIF inválido.", error.message)

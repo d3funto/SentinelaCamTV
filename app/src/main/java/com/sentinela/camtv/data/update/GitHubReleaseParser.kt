@@ -20,6 +20,7 @@ object GitHubReleaseParser {
         return GitHubRelease(
             tagName = json.stringField("tag_name"),
             htmlUrl = json.stringField("html_url"),
+            body = json.stringField("body"),
             assets = assets,
         )
     }

@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 fun AppAboutFooter(
     versionName: String,
     license: String,
-    githubUrl: String,
+    siteUrl: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -19,6 +19,6 @@ fun AppAboutFooter(
     ) {
         BodyText("Versão: $versionName")
         BodyText("Licença: $license")
-        BodyText("GitHub: $githubUrl")
+        BodyText("Site: $siteUrl")
     }
 }

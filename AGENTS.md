@@ -35,7 +35,9 @@ Arquitetura:
 - Evite arquitetura exagerada.
 
 UI/UX Android TV:
-- Siga um design system leve e consistente.
+- Evolua um design system leve e consistente conforme a UI amadurecer, sem impedir ajustes específicos quando melhorarem a experiência em TV.
+- Ao mexer em UI/design, use o design system do app como ponto de partida: cores, foco, bordas, espaçamentos, cards, botões e overlays devem vir de tokens ou componentes reutilizáveis sempre que possível. Exceções são permitidas quando melhorarem a experiência em Android TV, mas devem ser conscientes e mencionadas.
+- Evite introduzir novas cores, bordas, foco visual, cards ou botões hardcoded em telas de UI. Se um padrão novo se repetir, promova-o para o design system leve.
 - Use um único padrão global de foco por D-Pad.
 - O foco deve ser claro, proeminente e previsível.
 - Diferencie foco, aba atual, seleção e estado ativado/desativado.
@@ -46,6 +48,11 @@ UI/UX Android TV:
 - Evite animações pesadas, blur, sombras caras e efeitos desnecessários.
 - Para mudanças grandes de UI, prefira mockups ou prévias visuais antes de codificar.
 - No mosaico de câmeras, use chaves estáveis como `key(camera.id)`.
+
+Instruções do projeto:
+- Durante o desenvolvimento, sugira ajustes no `AGENTS.md` quando uma regra ficar rígida demais, vaga demais, desatualizada ou quando surgir uma decisão recorrente que mereça virar instrução do projeto.
+- Ao sugerir mudanças no `AGENTS.md`, apresente pontos positivos, pontos negativos e uma recomendação objetiva.
+- Não altere o `AGENTS.md` sem pedido explícito.
 
 ONVIF/RTSP:
 - Compatibilidade com ONVIF 2.x.

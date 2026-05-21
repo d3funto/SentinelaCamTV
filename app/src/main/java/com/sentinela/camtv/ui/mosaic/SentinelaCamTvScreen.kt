@@ -2,16 +2,20 @@ package com.sentinela.camtv.ui.mosaic
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,19 +29,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.material3.Button
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.sentinela.camtv.config.APP_PADDING_DP
 import com.sentinela.camtv.config.AppDvrConfig
@@ -51,6 +57,7 @@ import com.sentinela.camtv.player.PlayerMode
 import com.sentinela.camtv.player.streamRequestFor
 import com.sentinela.camtv.ui.common.QuickMenu
 import com.sentinela.camtv.ui.common.QuickMenuAction
+import com.sentinela.camtv.ui.design.SentinelaTvColors
 import com.sentinela.camtv.ui.labels.infoMenuLabel
 import com.sentinela.camtv.ui.labels.transmissionModeMenuLabel
 import com.sentinela.camtv.ui.player.FullscreenCameraScreen
@@ -134,6 +141,7 @@ fun MosaicScreen(
                     onOpenSettings()
                 },
                 onExitApp = onExitApp,
+                onQuickMenuHintShown = fullscreenViewModel::markQuickMenuHintSeen,
                 modifier = Modifier.fillMaxSize(),
             )
             return@Box
@@ -322,7 +330,7 @@ private fun MosaicQuickMenu(
         actions = listOf(
             QuickMenuAction("Sair do app", onExitApp),
             QuickMenuAction(infoMenuLabel(state.showInfo), onToggleInfo),
-            QuickMenuAction("Reorganizar mosaico", onStartReorder),
+            QuickMenuAction("Editar mosaico", onStartReorder),
             QuickMenuAction(transmissionModeMenuLabel(state.transmissionMode), onToggleTransmissionMode),
             QuickMenuAction("Ir para início", onOpenHome),
             QuickMenuAction("Ir para suporte", onOpenSettings),
@@ -338,16 +346,23 @@ private fun ReorderHint(
     Box(
         modifier = modifier
             .padding(top = 14.dp)
-            .background(Color(0xCC000000))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .widthIn(max = 860.dp)
+            .background(
+                color = SentinelaTvColors.panel.copy(alpha = 0.90f),
+                shape = RoundedCornerShape(14.dp),
+            )
+            .border(
+                width = 1.dp,
+                color = SentinelaTvColors.panelBorder,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .padding(horizontal = 18.dp, vertical = 10.dp),
     ) {
-        BasicText(
+        Text(
             text = MosaicUiText.REORDER_HINT,
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -367,41 +382,90 @@ private fun CameraDeletionDialog(
 
     Column(
         modifier = modifier
-            .background(Color(0xF0101820))
+            .widthIn(min = 390.dp, max = 520.dp)
+            .background(
+                color = SentinelaTvColors.panel.copy(alpha = 0.96f),
+                shape = RoundedCornerShape(18.dp),
+            )
+            .border(
+                width = 1.dp,
+                color = SentinelaTvColors.panelBorder,
+                shape = RoundedCornerShape(18.dp),
+            )
             .padding(24.dp)
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BasicText(
+        Text(
             text = MosaicUiText.DELETE_CAMERA_CONFIRMATION,
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
         )
-        BasicText(
+        Text(
             text = cameraName,
-            style = TextStyle(
-                color = Color(0xFFAED0D9),
-                fontSize = 14.sp,
-            ),
+            color = SentinelaTvColors.mutedText,
+            style = MaterialTheme.typography.bodyMedium,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Button(
+            DialogActionButton(
+                label = "Cancelar",
                 onClick = onDismiss,
                 modifier = Modifier.focusRequester(cancelFocusRequester),
-            ) {
-                Text("Cancelar")
-            }
-            Button(onClick = onConfirm) {
-                Text("Excluir")
-            }
+            )
+            DialogActionButton(
+                label = "Excluir",
+                onClick = onConfirm,
+            )
         }
+    }
+}
+
+@Composable
+private fun DialogActionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(14.dp)
+
+    Box(
+        modifier = modifier
+            .defaultMinSize(minWidth = 132.dp, minHeight = 48.dp)
+            .onFocusChanged { focused = it.isFocused }
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyUp && keyEvent.key.isConfirmKey()) {
+                    onClick()
+                    true
+                } else {
+                    false
+                }
+            }
+            .semantics { role = Role.Button }
+            .background(
+                color = SentinelaTvColors.control,
+                shape = shape,
+            )
+            .border(
+                width = if (focused) 3.dp else 1.dp,
+                color = if (focused) SentinelaTvColors.controlFocused else SentinelaTvColors.panelBorder,
+                shape = shape,
+            )
+            .padding(horizontal = 22.dp, vertical = 12.dp)
+            .focusable(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -411,14 +475,7 @@ private fun LoadingMosaicMessage() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(
-            text = "Carregando câmeras...",
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
+        MosaicMessageCard("Carregando câmeras...")
     }
 }
 
@@ -428,14 +485,7 @@ private fun EmptyMosaicMessage() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(
-            text = "Nenhuma câmera cadastrada.",
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
+        MosaicMessageCard("Nenhuma câmera cadastrada.")
     }
 }
 
@@ -445,13 +495,37 @@ private fun MissingDvrConfigMessage() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(
-            text = "Configure sentinela.dvr.host no local.properties para testar canais Intelbras.",
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+        MosaicMessageCard(
+            message = "Configure sentinela.dvr.host no local.properties para testar canais Intelbras.",
+        )
+    }
+}
+
+@Composable
+private fun MosaicMessageCard(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .widthIn(min = 280.dp, max = 720.dp)
+            .background(
+                color = SentinelaTvColors.panel.copy(alpha = 0.94f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .border(
+                width = 1.dp,
+                color = SentinelaTvColors.panelBorder,
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 22.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -461,3 +535,8 @@ private fun Key.isDirectionalKey(): Boolean =
         this == Key.DirectionRight ||
         this == Key.DirectionUp ||
         this == Key.DirectionDown
+
+private fun Key.isConfirmKey(): Boolean =
+    this == Key.DirectionCenter ||
+        this == Key.Enter ||
+        this == Key.NumPadEnter

@@ -11,6 +11,7 @@ class GitHubReleaseParserTest {
             {
               "tag_name": "v1.0.1",
               "html_url": "https://github.com/d3funto/SentinelaCamTV/releases/tag/v1.0.1",
+              "body": "- Corrige retorno no mosaico vazio.\n- Melhora ONVIF.",
               "assets": [
                 {
                   "name": "SentinelaCamTV-v1.0.1-armeabi-v7a.apk",
@@ -31,6 +32,7 @@ class GitHubReleaseParserTest {
 
         assertEquals("v1.0.1", release.tagName)
         assertEquals("https://github.com/d3funto/SentinelaCamTV/releases/tag/v1.0.1", release.htmlUrl)
+        assertEquals("- Corrige retorno no mosaico vazio.\n- Melhora ONVIF.", release.body)
         assertEquals(
             listOf(
                 GitHubReleaseAsset(

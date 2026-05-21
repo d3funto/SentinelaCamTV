@@ -21,13 +21,14 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val exportMessage: String? = null,
     val updateMessage: String? = null,
+    val showUpdateDialog: Boolean = false,
     val checkingForUpdate: Boolean = false,
     val downloadingUpdate: Boolean = false,
     val availableUpdate: AvailableUpdate? = null,
     val downloadedUpdate: DownloadedUpdate? = null,
     val versionName: String = BuildConfig.VERSION_NAME,
     val license: String = "GPL-3.0-or-later",
-    val githubUrl: String = "https://github.com/d3funto/SentinelaCamTV",
+    val siteUrl: String = "https://github.com/d3funto/SentinelaCamTV",
 )
 
 class SettingsViewModel(
@@ -45,6 +46,7 @@ class SettingsViewModel(
         SettingsUiState(
             exportMessage = export,
             updateMessage = update.message,
+            showUpdateDialog = update.showDialog,
             checkingForUpdate = update.checking,
             downloadingUpdate = update.downloading,
             availableUpdate = update.availableUpdate,
@@ -74,6 +76,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             updateState.value = UpdateUiState(
                 checking = true,
+                showDialog = true,
                 message = "Buscando atualização...",
             )
             updateRepository.checkForUpdate(
@@ -83,17 +86,20 @@ class SettingsViewModel(
                 onSuccess = { result ->
                     updateState.value = when (result) {
                         is UpdateCheckResult.Available -> UpdateUiState(
+                            showDialog = true,
                             message = "Versão ${result.update.versionName} disponível.",
                             availableUpdate = result.update,
                         )
 
                         UpdateCheckResult.UpToDate -> UpdateUiState(
+                            showDialog = true,
                             message = "Você já está na versão mais recente.",
                         )
                     }
                 },
                 onFailure = { error ->
                     updateState.value = UpdateUiState(
+                        showDialog = true,
                         message = "Falha ao buscar atualização: ${error.message ?: "erro desconhecido"}",
                     )
                 },
@@ -108,11 +114,13 @@ class SettingsViewModel(
         viewModelScope.launch {
             updateState.value = updateState.value.copy(
                 downloading = true,
+                showDialog = true,
                 message = "Baixando atualização...",
             )
             updateRepository.downloadUpdate(update).fold(
                 onSuccess = { downloaded ->
                     updateState.value = UpdateUiState(
+                        showDialog = true,
                         message = "Atualização baixada. Abrindo instalador...",
                         availableUpdate = update,
                         downloadedUpdate = downloaded,
@@ -122,6 +130,7 @@ class SettingsViewModel(
                 onFailure = { error ->
                     updateState.value = updateState.value.copy(
                         downloading = false,
+                        showDialog = true,
                         message = "Falha ao baixar atualização: ${error.message ?: "erro desconhecido"}",
                     )
                 },
@@ -131,7 +140,12 @@ class SettingsViewModel(
 
     fun installDownloadedUpdate() {
         val downloaded = updateState.value.downloadedUpdate ?: return
+        updateState.value = updateState.value.copy(showDialog = true)
         openInstaller(downloaded)
+    }
+
+    fun dismissUpdateDialog() {
+        updateState.value = updateState.value.copy(showDialog = false)
     }
 
     private fun exportFile(block: suspend () -> Result<File>) {
@@ -150,12 +164,14 @@ class SettingsViewModel(
             onSuccess = {
                 updateState.value = updateState.value.copy(
                     downloading = false,
+                    showDialog = true,
                     message = "Instalador aberto. Confirme a atualização no Android.",
                 )
             },
             onFailure = { error ->
                 updateState.value = updateState.value.copy(
                     downloading = false,
+                    showDialog = true,
                     message = error.message ?: "Falha ao abrir o instalador.",
                 )
             },
@@ -165,6 +181,7 @@ class SettingsViewModel(
 
 private data class UpdateUiState(
     val message: String? = null,
+    val showDialog: Boolean = false,
     val checking: Boolean = false,
     val downloading: Boolean = false,
     val availableUpdate: AvailableUpdate? = null,

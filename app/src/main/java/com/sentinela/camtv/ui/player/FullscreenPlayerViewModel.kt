@@ -30,6 +30,7 @@ data class FullscreenPlayerUiState(
     val showInfo: Boolean = true,
     val transmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
     val quickMenuVisible: Boolean = false,
+    val showQuickMenuHint: Boolean = false,
 ) {
     fun streamRequest(): CameraStreamRequest? {
         val activeCamera = camera ?: return null
@@ -48,6 +49,7 @@ private data class FullscreenCoreState(
     val streamQuality: StreamQuality,
     val showInfo: Boolean,
     val transmissionMode: TransmissionMode,
+    val showQuickMenuHint: Boolean,
 )
 
 class FullscreenPlayerViewModel(
@@ -72,6 +74,7 @@ class FullscreenPlayerViewModel(
             streamQuality = quality,
             showInfo = preferences.showFullscreenInfo,
             transmissionMode = localTransmissionMode ?: preferences.globalTransmissionMode,
+            showQuickMenuHint = activeCamera != null && !preferences.fullscreenQuickMenuHintSeen,
         )
     }
 
@@ -86,6 +89,7 @@ class FullscreenPlayerViewModel(
             showInfo = core.showInfo,
             transmissionMode = core.transmissionMode,
             quickMenuVisible = menuVisible,
+            showQuickMenuHint = core.showQuickMenuHint && !menuVisible,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -107,6 +111,12 @@ class FullscreenPlayerViewModel(
 
     fun dismissQuickMenu() {
         quickMenuVisible.value = false
+    }
+
+    fun markQuickMenuHintSeen() {
+        viewModelScope.launch {
+            settingsRepository.setFullscreenQuickMenuHintSeen(true)
+        }
     }
 
     fun toggleAudio() {

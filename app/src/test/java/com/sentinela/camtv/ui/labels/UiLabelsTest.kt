@@ -27,10 +27,10 @@ class UiLabelsTest {
 
     @Test
     fun transmissionModeLabelsAreUserFacingPortuguese() {
-        assertEquals("menor latência", transmissionModeLabel(TransmissionMode.MENOR_LATENCIA))
-        assertEquals("estabilidade", transmissionModeLabel(TransmissionMode.QUALIDADE))
-        assertEquals("Modo: menor latência", transmissionModeMenuLabel(TransmissionMode.MENOR_LATENCIA))
-        assertEquals("Modo: estabilidade", transmissionModeMenuLabel(TransmissionMode.QUALIDADE))
+        assertEquals("Menor latência", transmissionModeLabel(TransmissionMode.MENOR_LATENCIA))
+        assertEquals("Estabilidade", transmissionModeLabel(TransmissionMode.QUALIDADE))
+        assertEquals("Modo: Menor latência", transmissionModeMenuLabel(TransmissionMode.MENOR_LATENCIA))
+        assertEquals("Modo: Estabilidade", transmissionModeMenuLabel(TransmissionMode.QUALIDADE))
     }
 
     @Test

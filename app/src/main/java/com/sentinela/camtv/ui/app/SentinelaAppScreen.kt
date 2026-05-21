@@ -75,6 +75,7 @@ fun SentinelaAppScreen() {
                 onCopyRtspMainUrlToSubUrl = cameraManagerViewModel::copyRtspMainUrlToSubUrl,
                 onConnectManualRtspCamera = cameraManagerViewModel::connectManualRtspCamera,
                 onDismissAuthDialog = cameraManagerViewModel::dismissAuthDialog,
+                onOpenMosaic = appViewModel::openMosaic,
                 onBack = appViewModel::goBack,
             )
         }
@@ -88,6 +89,7 @@ fun SentinelaAppScreen() {
                 onCheckForUpdate = settingsViewModel::checkForUpdate,
                 onDownloadUpdate = settingsViewModel::downloadUpdate,
                 onInstallDownloadedUpdate = settingsViewModel::installDownloadedUpdate,
+                onDismissUpdateDialog = settingsViewModel::dismissUpdateDialog,
                 onOpenHome = appViewModel::openHome,
                 onBack = appViewModel::goBack,
             )

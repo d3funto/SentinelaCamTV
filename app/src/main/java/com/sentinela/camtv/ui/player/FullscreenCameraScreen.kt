@@ -2,10 +2,13 @@ package com.sentinela.camtv.ui.player
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -19,16 +22,19 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
 import com.sentinela.camtv.player.IntelbrasRtspUrlBuilder
 import com.sentinela.camtv.ui.common.QuickMenu
 import com.sentinela.camtv.ui.common.QuickMenuAction
+import com.sentinela.camtv.ui.design.SentinelaTvColors
 import com.sentinela.camtv.ui.labels.audioLabel
 import com.sentinela.camtv.ui.labels.infoMenuLabel
 import com.sentinela.camtv.ui.labels.streamQualityLabel
 import com.sentinela.camtv.ui.labels.transmissionModeMenuLabel
+import kotlinx.coroutines.delay
 
 @Composable
 fun FullscreenCameraScreen(
@@ -44,6 +50,7 @@ fun FullscreenCameraScreen(
     onOpenHome: () -> Unit,
     onOpenSettings: () -> Unit,
     onExitApp: () -> Unit,
+    onQuickMenuHintShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -66,6 +73,13 @@ fun FullscreenCameraScreen(
         }
     }
 
+    LaunchedEffect(state.camera?.id, state.showQuickMenuHint) {
+        if (state.showQuickMenuHint) {
+            delay(FULLSCREEN_QUICK_MENU_HINT_DURATION_MS)
+            onQuickMenuHintShown()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -75,7 +89,7 @@ fun FullscreenCameraScreen(
                 if (
                     !state.quickMenuVisible &&
                     keyEvent.type == KeyEventType.KeyUp &&
-                    keyEvent.key.opensQuickMenu()
+                    keyEvent.key.opensFullscreenQuickMenu()
                 ) {
                     onShowQuickMenu()
                     true
@@ -106,6 +120,10 @@ fun FullscreenCameraScreen(
                 onOpenHome = onOpenHome,
                 onOpenSettings = onOpenSettings,
                 onExitApp = onExitApp,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        } else if (state.showQuickMenuHint) {
+            FullscreenQuickMenuHint(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -144,19 +162,54 @@ private fun OpeningFullscreenMessage() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(
+        FullscreenOverlayCard(
             text = "Abrindo câmera...",
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            ),
         )
     }
 }
 
-private fun Key.opensQuickMenu(): Boolean =
+@Composable
+private fun FullscreenQuickMenuHint(
+    modifier: Modifier = Modifier,
+) {
+    FullscreenOverlayCard(
+        text = "Pressione OK/Enter para abrir o menu rápido.",
+        modifier = modifier.padding(bottom = 28.dp),
+    )
+}
+
+@Composable
+private fun FullscreenOverlayCard(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .widthIn(min = 280.dp, max = 540.dp)
+            .background(
+                color = SentinelaTvColors.panel.copy(alpha = 0.88f),
+                shape = RoundedCornerShape(16.dp),
+            )
+            .border(
+                width = 1.dp,
+                color = SentinelaTvColors.panelBorder,
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+internal fun Key.opensFullscreenQuickMenu(): Boolean =
     this == Key.Enter ||
         this == Key.NumPadEnter ||
-        this == Key.DirectionCenter ||
-        this == Key.DirectionDown
+        this == Key.DirectionCenter
+
+private const val FULLSCREEN_QUICK_MENU_HINT_DURATION_MS = 4_000L
