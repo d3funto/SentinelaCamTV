@@ -42,9 +42,11 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -61,6 +63,7 @@ import com.sentinela.camtv.domain.RtspCameraSource
 import com.sentinela.camtv.ui.common.SentinelaScreen
 import com.sentinela.camtv.ui.design.SentinelaTvColors
 import com.sentinela.camtv.ui.design.SentinelaTvSize
+import com.sentinela.camtv.ui.design.SentinelaTvDialog
 import com.sentinela.onvif.DiscoveredOnvifDevice
 
 private enum class CameraManagerTab(
@@ -69,6 +72,79 @@ private enum class CameraManagerTab(
     ONVIF("ONVIF"),
     RTSP("RTSP direto"),
     CONNECTED("Conectadas"),
+}
+
+private object CameraTextFieldId {
+    const val ONVIF_USERNAME = "onvif_username"
+    const val ONVIF_PASSWORD = "onvif_password"
+    const val RTSP_NAME = "rtsp_name"
+    const val RTSP_MAIN_URL = "rtsp_main_url"
+    const val RTSP_SUB_URL = "rtsp_sub_url"
+    const val RTSP_USERNAME = "rtsp_username"
+    const val RTSP_PASSWORD = "rtsp_password"
+}
+
+internal enum class CursorMoveDirection {
+    Left,
+    Right,
+}
+
+internal object TextFieldCursorController {
+    fun moveCursor(
+        value: TextFieldValue,
+        direction: CursorMoveDirection,
+    ): TextFieldValue {
+        val selectionStart = minOf(value.selection.start, value.selection.end)
+        val selectionEnd = maxOf(value.selection.start, value.selection.end)
+        val collapsed = value.selection.start == value.selection.end
+        val position = when (direction) {
+            CursorMoveDirection.Left -> if (collapsed) {
+                (selectionStart - 1).coerceAtLeast(0)
+            } else {
+                selectionStart
+            }
+
+            CursorMoveDirection.Right -> if (collapsed) {
+                (selectionEnd + 1).coerceAtMost(value.text.length)
+            } else {
+                selectionEnd
+            }
+        }
+        return value.copy(selection = TextRange(position))
+    }
+
+    fun syncExternalText(
+        current: TextFieldValue,
+        newText: String,
+    ): TextFieldValue {
+        if (current.text == newText) return current
+
+        val selection = if (current.text.isBlank()) {
+            TextRange(newText.length)
+        } else {
+            TextRange(
+                current.selection.start.coerceIn(0, newText.length),
+                current.selection.end.coerceIn(0, newText.length),
+            )
+        }
+        return current.copy(
+            text = newText,
+            selection = selection,
+        )
+    }
+}
+
+internal object TextFieldEditModePolicy {
+    fun shouldMoveCursor(
+        isEditing: Boolean,
+        key: Key,
+    ): Boolean = isEditing && key.isHorizontalCursorKey()
+
+    fun shouldEnterEditing(
+        focused: Boolean,
+        isEditing: Boolean,
+        key: Key,
+    ): Boolean = focused && !isEditing && key.isConfirmKey()
 }
 
 internal const val CONNECTED_TAB_DESCRIPTION =
@@ -102,6 +178,13 @@ private class CameraManagerFocusRequesters {
     val connectedTab = FocusRequester()
     val firstContent = FocusRequester()
     val viewMosaic = FocusRequester()
+    val onvifUsername = FocusRequester()
+    val onvifPassword = FocusRequester()
+    val rtspMainUrl = FocusRequester()
+    val rtspCopyToSubUrl = FocusRequester()
+    val rtspSubUrl = FocusRequester()
+    val rtspUsername = FocusRequester()
+    val rtspPassword = FocusRequester()
 
     fun tab(tab: CameraManagerTab): FocusRequester =
         when (tab) {
@@ -132,15 +215,17 @@ fun CameraManagerScreen(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(CameraManagerTab.ONVIF) }
     var textInputOpen by remember { mutableStateOf(false) }
+    var activeEditingFieldId by rememberSaveable { mutableStateOf<String?>(null) }
     val focusRequesters = remember { CameraManagerFocusRequesters() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    BackHandler(enabled = textInputOpen) {
+    BackHandler(enabled = activeEditingFieldId != null) {
+        activeEditingFieldId = null
         textInputOpen = false
         keyboardController?.hide()
     }
 
-    BackHandler(enabled = !textInputOpen, onBack = onBack)
+    BackHandler(enabled = !textInputOpen && activeEditingFieldId == null, onBack = onBack)
 
     LaunchedEffect(Unit) {
         focusRequesters.onvifTab.requestFocus()
@@ -182,6 +267,8 @@ fun CameraManagerScreen(
                         focusRequesters = focusRequesters,
                         textInputOpen = textInputOpen,
                         onTextInputOpenChanged = { textInputOpen = it },
+                        activeEditingFieldId = activeEditingFieldId,
+                        onActiveEditingFieldIdChanged = { activeEditingFieldId = it },
                         onDiscoverOnvif = onDiscoverOnvif,
                         onSelectOnvifDevice = onSelectOnvifDevice,
                         onUsernameChanged = onUsernameChanged,
@@ -194,6 +281,8 @@ fun CameraManagerScreen(
                         focusRequesters = focusRequesters,
                         textInputOpen = textInputOpen,
                         onTextInputOpenChanged = { textInputOpen = it },
+                        activeEditingFieldId = activeEditingFieldId,
+                        onActiveEditingFieldIdChanged = { activeEditingFieldId = it },
                         onRtspNameChanged = onRtspNameChanged,
                         onRtspMainUrlChanged = onRtspMainUrlChanged,
                         onRtspSubUrlChanged = onRtspSubUrlChanged,
@@ -212,11 +301,10 @@ fun CameraManagerScreen(
             }
 
             state.authDialogMessage?.let { message ->
-                AuthErrorDialog(
+                SentinelaTvDialog(
+                    title = cameraDialogTitle(message),
                     message = message,
-                    onDismiss = onDismissAuthDialog,
-                    metrics = metrics,
-                    modifier = Modifier.align(Alignment.Center),
+                    onConfirm = onDismissAuthDialog,
                 )
             }
         }
@@ -263,6 +351,8 @@ private fun OnvifTab(
     focusRequesters: CameraManagerFocusRequesters,
     textInputOpen: Boolean,
     onTextInputOpenChanged: (Boolean) -> Unit,
+    activeEditingFieldId: String?,
+    onActiveEditingFieldIdChanged: (String?) -> Unit,
     onDiscoverOnvif: () -> Unit,
     onSelectOnvifDevice: (String) -> Unit,
     onUsernameChanged: (String) -> Unit,
@@ -272,47 +362,34 @@ private fun OnvifTab(
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(metrics.contentGap),
+        Column(
+            modifier = Modifier.width(metrics.leftWidth),
         ) {
-            Column(
-                modifier = Modifier.width(metrics.leftWidth),
+            SectionHeading("Descoberta ONVIF", metrics)
+            SectionDescription("Procure dispositivos na rede local, selecione um e conecte com usuário e senha.", metrics)
+            Spacer(Modifier.height(metrics.dp(14f)))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(metrics.dp(18f)),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SectionHeading("Descoberta ONVIF", metrics)
-                SectionDescription("Procure dispositivos na rede local, selecione um e conecte com usuário e senha.", metrics)
-                Spacer(Modifier.height(metrics.dp(14f)))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(metrics.dp(18f)),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SentinelaActionButton(
-                        label = if (state.scanning) "Procurando ONVIF..." else "Buscar ONVIF na rede",
-                        onClick = onDiscoverOnvif,
-                        enabled = !state.busy,
-                        width = metrics.primaryButtonWidth,
-                        height = metrics.dp(62f),
-                        metrics = metrics,
-                        modifier = Modifier.focusRequester(focusRequesters.firstContent),
-                    )
-                    SentinelaActionButton(
-                        label = if (state.saving) "Conectando..." else "Conectar selecionado",
-                        onClick = onSaveSelectedOnvifCamera,
-                        enabled = !state.busy && state.selectedDevice != null,
-                        width = metrics.secondaryButtonWidth,
-                        height = metrics.dp(56f),
-                        metrics = metrics,
-                    )
-                }
+                SentinelaActionButton(
+                    label = if (state.scanning) "Procurando ONVIF..." else "Buscar ONVIF na rede",
+                    onClick = onDiscoverOnvif,
+                    enabled = !state.busy,
+                    width = metrics.primaryButtonWidth,
+                    height = metrics.dp(62f),
+                    metrics = metrics,
+                    modifier = Modifier.focusRequester(focusRequesters.firstContent),
+                )
+                SentinelaActionButton(
+                    label = if (state.saving) "Conectando..." else "Conectar selecionado",
+                    onClick = onSaveSelectedOnvifCamera,
+                    enabled = !state.busy && state.selectedDevice != null,
+                    width = metrics.secondaryButtonWidth,
+                    height = metrics.dp(56f),
+                    metrics = metrics,
+                )
             }
-
-            StatusCard(
-                title = "Status",
-                message = state.statusMessage ?: "Pronto para procurar dispositivos ONVIF na rede local.",
-                width = metrics.statusCardWidth,
-                height = metrics.statusCardHeight,
-                metrics = metrics,
-            )
         }
 
         Spacer(Modifier.height(metrics.dp(32f)))
@@ -329,16 +406,25 @@ private fun OnvifTab(
                 Spacer(Modifier.height(metrics.dp(10f)))
                 Row(horizontalArrangement = Arrangement.spacedBy(metrics.dp(24f))) {
                     SentinelaTextField(
+                        fieldId = CameraTextFieldId.ONVIF_USERNAME,
                         label = "Usuário",
                         value = state.username,
                         onValueChange = onUsernameChanged,
                         width = (metrics.leftWidth - metrics.dp(24f)) / 2,
                         height = metrics.fieldHeight,
                         metrics = metrics,
+                        modifier = Modifier
+                            .focusRequester(focusRequesters.onvifUsername)
+                            .focusProperties {
+                                right = focusRequesters.onvifPassword
+                            },
                         textInputOpen = textInputOpen,
                         onTextInputOpenChanged = onTextInputOpenChanged,
+                        activeEditingFieldId = activeEditingFieldId,
+                        onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
                     )
                     SentinelaTextField(
+                        fieldId = CameraTextFieldId.ONVIF_PASSWORD,
                         label = "Senha",
                         value = state.password,
                         onValueChange = onPasswordChanged,
@@ -346,8 +432,15 @@ private fun OnvifTab(
                         height = metrics.fieldHeight,
                         metrics = metrics,
                         password = true,
+                        modifier = Modifier
+                            .focusRequester(focusRequesters.onvifPassword)
+                            .focusProperties {
+                                left = focusRequesters.onvifUsername
+                            },
                         textInputOpen = textInputOpen,
                         onTextInputOpenChanged = onTextInputOpenChanged,
+                        activeEditingFieldId = activeEditingFieldId,
+                        onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
                     )
                 }
             }
@@ -380,6 +473,8 @@ private fun RtspTab(
     focusRequesters: CameraManagerFocusRequesters,
     textInputOpen: Boolean,
     onTextInputOpenChanged: (Boolean) -> Unit,
+    activeEditingFieldId: String?,
+    onActiveEditingFieldIdChanged: (String?) -> Unit,
     onRtspNameChanged: (String) -> Unit,
     onRtspMainUrlChanged: (String) -> Unit,
     onRtspSubUrlChanged: (String) -> Unit,
@@ -397,9 +492,10 @@ private fun RtspTab(
             modifier = Modifier.width(metrics.leftWidth),
         ) {
             SectionHeading("RTSP direto", metrics)
-            SectionDescription("Use quando você já tem a URL RTSP da câmera, DVR ou NVR.", metrics)
+            SectionDescription("Informe a URL RTSP e, se necessário, usuário e senha.", metrics)
             Spacer(Modifier.height(metrics.dp(22f)))
             SentinelaTextField(
+                fieldId = CameraTextFieldId.RTSP_NAME,
                 label = "Nome",
                 value = state.rtspName,
                 onValueChange = onRtspNameChanged,
@@ -410,6 +506,8 @@ private fun RtspTab(
                 modifier = Modifier.focusRequester(focusRequesters.firstContent),
                 textInputOpen = textInputOpen,
                 onTextInputOpenChanged = onTextInputOpenChanged,
+                activeEditingFieldId = activeEditingFieldId,
+                onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
             )
             Spacer(Modifier.height(metrics.dp(16f)))
             Row(
@@ -417,6 +515,7 @@ private fun RtspTab(
                 verticalAlignment = Alignment.Bottom,
             ) {
                 SentinelaTextField(
+                    fieldId = CameraTextFieldId.RTSP_MAIN_URL,
                     label = "URL RTSP principal",
                     value = state.rtspMainUrl,
                     onValueChange = onRtspMainUrlChanged,
@@ -424,8 +523,16 @@ private fun RtspTab(
                     height = metrics.fieldHeight,
                     metrics = metrics,
                     placeholder = "rtsp://192.168.0.10:554/...",
+                    modifier = Modifier
+                        .focusRequester(focusRequesters.rtspMainUrl)
+                        .focusProperties {
+                            right = focusRequesters.rtspCopyToSubUrl
+                            down = focusRequesters.rtspSubUrl
+                        },
                     textInputOpen = textInputOpen,
                     onTextInputOpenChanged = onTextInputOpenChanged,
+                    activeEditingFieldId = activeEditingFieldId,
+                    onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
                 )
                 SentinelaActionButton(
                     label = "Colar embaixo",
@@ -434,10 +541,17 @@ private fun RtspTab(
                     width = metrics.compactButtonWidth,
                     height = metrics.fieldHeight,
                     metrics = metrics,
+                    modifier = Modifier
+                        .focusRequester(focusRequesters.rtspCopyToSubUrl)
+                        .focusProperties {
+                            left = focusRequesters.rtspMainUrl
+                            down = focusRequesters.rtspSubUrl
+                        },
                 )
             }
             Spacer(Modifier.height(metrics.dp(16f)))
             SentinelaTextField(
+                fieldId = CameraTextFieldId.RTSP_SUB_URL,
                 label = "URL RTSP secundária",
                 value = state.rtspSubUrl,
                 onValueChange = onRtspSubUrlChanged,
@@ -445,25 +559,27 @@ private fun RtspTab(
                 height = metrics.fieldHeight,
                 metrics = metrics,
                 placeholder = "Opcional",
+                modifier = Modifier
+                    .focusRequester(focusRequesters.rtspSubUrl)
+                    .focusProperties {
+                        up = focusRequesters.rtspMainUrl
+                        left = FocusRequester.Cancel
+                        right = focusRequesters.rtspUsername
+                    },
                 textInputOpen = textInputOpen,
                 onTextInputOpenChanged = onTextInputOpenChanged,
+                activeEditingFieldId = activeEditingFieldId,
+                onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
             )
         }
 
         Column(
             modifier = Modifier.width(metrics.rightWidth),
         ) {
-            StatusCard(
-                title = "Status",
-                message = state.rtspStatusText(),
-                width = metrics.statusCardWidth,
-                height = metrics.dp(92f),
-                metrics = metrics,
-            )
-            Spacer(Modifier.height(metrics.dp(34f)))
             SectionHeading("Credenciais", metrics)
             Spacer(Modifier.height(metrics.dp(16f)))
             SentinelaTextField(
+                fieldId = CameraTextFieldId.RTSP_USERNAME,
                 label = "Usuário",
                 value = state.rtspUsername,
                 onValueChange = onRtspUsernameChanged,
@@ -471,11 +587,20 @@ private fun RtspTab(
                 height = metrics.fieldHeight,
                 metrics = metrics,
                 placeholder = "Opcional",
+                modifier = Modifier
+                    .focusRequester(focusRequesters.rtspUsername)
+                    .focusProperties {
+                        left = focusRequesters.rtspSubUrl
+                        down = focusRequesters.rtspPassword
+                    },
                 textInputOpen = textInputOpen,
                 onTextInputOpenChanged = onTextInputOpenChanged,
+                activeEditingFieldId = activeEditingFieldId,
+                onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
             )
             Spacer(Modifier.height(metrics.dp(16f)))
             SentinelaTextField(
+                fieldId = CameraTextFieldId.RTSP_PASSWORD,
                 label = "Senha",
                 value = state.rtspPassword,
                 onValueChange = onRtspPasswordChanged,
@@ -484,30 +609,33 @@ private fun RtspTab(
                 metrics = metrics,
                 placeholder = "Opcional",
                 password = true,
+                modifier = Modifier
+                    .focusRequester(focusRequesters.rtspPassword)
+                    .focusProperties {
+                        left = focusRequesters.rtspCopyToSubUrl
+                        up = focusRequesters.rtspUsername
+                    },
                 textInputOpen = textInputOpen,
                 onTextInputOpenChanged = onTextInputOpenChanged,
+                activeEditingFieldId = activeEditingFieldId,
+                onActiveEditingFieldIdChanged = onActiveEditingFieldIdChanged,
             )
             Spacer(Modifier.height(metrics.dp(14f)))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(metrics.dp(12f)),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val connectButtonWidth = metrics.dp(166f)
-                InfoCard(
-                    message = "Credenciais são criptografadas neste aparelho.",
-                    width = metrics.rightWidth - connectButtonWidth - metrics.dp(12f),
-                    height = metrics.dp(58f),
-                    metrics = metrics,
-                )
-                SentinelaActionButton(
-                    label = if (state.rtspConnecting) "Conectando..." else "Conectar",
-                    onClick = onConnectManualRtspCamera,
-                    enabled = !state.busy,
-                    width = connectButtonWidth,
-                    height = metrics.dp(58f),
-                    metrics = metrics,
-                )
-            }
+            InfoCard(
+                message = "Credenciais são criptografadas neste aparelho.",
+                width = metrics.rightWidth,
+                height = metrics.dp(58f),
+                metrics = metrics,
+            )
+            Spacer(Modifier.height(metrics.dp(12f)))
+            SentinelaActionButton(
+                label = if (state.rtspConnecting) "Conectando..." else "Conectar",
+                onClick = onConnectManualRtspCamera,
+                enabled = !state.busy,
+                width = metrics.rightWidth,
+                height = metrics.dp(58f),
+                metrics = metrics,
+            )
         }
     }
 }
@@ -767,6 +895,7 @@ private fun SentinelaActionButton(
 
 @Composable
 private fun SentinelaTextField(
+    fieldId: String,
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -778,26 +907,74 @@ private fun SentinelaTextField(
     password: Boolean = false,
     textInputOpen: Boolean,
     onTextInputOpenChanged: (Boolean) -> Unit,
+    activeEditingFieldId: String?,
+    onActiveEditingFieldIdChanged: (String?) -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf(false) }
+    var fieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = value,
+                selection = TextRange(value.length),
+            ),
+        )
+    }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val isEditing = activeEditingFieldId == fieldId
+    val keyboardOpen = textInputOpen && isEditing
 
-    LaunchedEffect(textInputOpen) {
-        if (!textInputOpen) {
-            editing = false
+    LaunchedEffect(value) {
+        fieldValue = TextFieldCursorController.syncExternalText(
+            current = fieldValue,
+            newText = value,
+        )
+    }
+
+    LaunchedEffect(keyboardOpen) {
+        if (keyboardOpen) {
+            keyboardController?.show()
+        } else {
             keyboardController?.hide()
         }
     }
 
-    LaunchedEffect(editing) {
-        if (editing) {
-            keyboardController?.show()
+    fun handleTextFieldKeyEvent(event: androidx.compose.ui.input.key.KeyEvent): Boolean {
+        return when {
+            TextFieldEditModePolicy.shouldMoveCursor(isEditing, event.key) -> {
+                if (event.type == KeyEventType.KeyDown) {
+                    fieldValue = TextFieldCursorController.moveCursor(
+                        value = fieldValue,
+                        direction = if (event.key == Key.DirectionLeft) {
+                            CursorMoveDirection.Left
+                        } else {
+                            CursorMoveDirection.Right
+                        },
+                    )
+                }
+                true
+            }
+
+            TextFieldEditModePolicy.shouldEnterEditing(
+                focused = focused,
+                isEditing = isEditing,
+                key = event.key,
+            ) -> {
+                if (event.type == KeyEventType.KeyDown) {
+                    onActiveEditingFieldIdChanged(fieldId)
+                    onTextInputOpenChanged(true)
+                    keyboardController?.show()
+                }
+                true
+            }
+
+            else -> false
         }
     }
 
     Column(
-        modifier = modifier.width(width),
+        modifier = Modifier
+            .width(width)
+            .onPreviewKeyEvent { event -> handleTextFieldKeyEvent(event) },
         verticalArrangement = Arrangement.spacedBy(metrics.dp(4f)),
     ) {
         LabelText(label, metrics)
@@ -813,7 +990,7 @@ private fun SentinelaTextField(
                 .padding(horizontal = metrics.dp(14f)),
             contentAlignment = Alignment.CenterStart,
         ) {
-            if (value.isBlank() && placeholder.isNotBlank()) {
+            if (fieldValue.text.isBlank() && placeholder.isNotBlank()) {
                 Text(
                     text = placeholder,
                     style = fieldTextStyle(metrics).copy(color = SentinelaTvColors.mutedText),
@@ -822,41 +999,42 @@ private fun SentinelaTextField(
                 )
             }
             BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
+                value = fieldValue,
+                onValueChange = { updatedValue ->
+                    fieldValue = updatedValue
+                    if (updatedValue.text != value) {
+                        onValueChange(updatedValue.text)
+                    }
+                },
                 singleLine = true,
                 textStyle = fieldTextStyle(metrics),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (password) KeyboardType.Password else KeyboardType.Text,
                 ),
-                readOnly = !editing,
+                readOnly = !isEditing,
                 visualTransformation = if (password) {
                     PasswordVisualTransformation()
                 } else {
                     VisualTransformation.None
                 },
                 modifier = Modifier
+                    .then(modifier)
                     .fillMaxWidth()
                     .onFocusChanged { focusState ->
                         focused = focusState.isFocused
-                        if (focusState.isFocused && !editing) {
+                        if (focusState.isFocused && !keyboardOpen) {
                             keyboardController?.hide()
                         } else if (!focusState.isFocused) {
-                            editing = false
-                            onTextInputOpenChanged(false)
+                            if (isEditing) {
+                                onActiveEditingFieldIdChanged(null)
+                            }
+                            if (keyboardOpen) {
+                                onTextInputOpenChanged(false)
+                            }
                             keyboardController?.hide()
                         }
                     }
-                    .onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyUp && event.key.isConfirmKey() && !editing) {
-                            editing = true
-                            onTextInputOpenChanged(true)
-                            true
-                        } else {
-                            false
-                        }
-                    },
             )
         }
     }
@@ -1131,33 +1309,6 @@ private fun PanelText(
 }
 
 @Composable
-private fun AuthErrorDialog(
-    message: String,
-    onDismiss: () -> Unit,
-    metrics: CameraManagerMetrics,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .width(metrics.dp(520f))
-            .background(SentinelaTvColors.panel, RoundedCornerShape(metrics.dp(10f)))
-            .border(1.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(metrics.dp(10f)))
-            .padding(metrics.dp(24f)),
-        verticalArrangement = Arrangement.spacedBy(metrics.dp(14f)),
-    ) {
-        SectionHeading("Falha ao conectar câmera", metrics)
-        PanelText(message, metrics)
-        SentinelaActionButton(
-            label = "OK",
-            onClick = onDismiss,
-            width = metrics.dp(120f),
-            height = metrics.dp(48f),
-            metrics = metrics,
-        )
-    }
-}
-
-@Composable
 private fun tabColors() =
     ButtonDefaults.colors(
         containerColor = SentinelaTvColors.control,
@@ -1252,20 +1403,12 @@ private fun CameraManagerMetrics.tabWidth(tab: CameraManagerTab): Dp =
         CameraManagerTab.CONNECTED -> connectedTabWidth
     }
 
-private fun CameraManagerUiState.rtspStatusText(): String {
-    val message = statusMessage
-    return when {
-        rtspConnecting -> message ?: "Conectando RTSP..."
-        message != null && message.isRtspStatusMessage() -> message
-        else -> "Informe a URL RTSP e, se necessário, usuário e senha."
+private fun cameraDialogTitle(message: String): String =
+    when {
+        message.contains("conectada", ignoreCase = true) -> "Câmera conectada"
+        message.contains("ONVIF", ignoreCase = true) -> "Falha ONVIF"
+        else -> "Falha ao conectar câmera"
     }
-}
-
-private fun String.isRtspStatusMessage(): Boolean =
-    contains("RTSP", ignoreCase = true) ||
-        startsWith("Fluxo ") ||
-        startsWith("Conectando Fluxo") ||
-        startsWith("Informe usuário e senha")
 
 private fun Camera.connectedSubtitle(): String =
     "${source.connectedLabel()} • ${streamLabel()}"
@@ -1311,3 +1454,7 @@ private fun Key.isConfirmKey(): Boolean =
     this == Key.DirectionCenter ||
         this == Key.Enter ||
         this == Key.NumPadEnter
+
+private fun Key.isHorizontalCursorKey(): Boolean =
+    this == Key.DirectionLeft ||
+        this == Key.DirectionRight

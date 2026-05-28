@@ -13,17 +13,27 @@ class AppUpdateInstaller(
 ) {
     private val appContext = context.applicationContext
 
-    fun openInstaller(update: DownloadedUpdate): Result<Unit> = runCatching {
+    fun canRequestPackageInstalls(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            appContext.packageManager.canRequestPackageInstalls()
+
+    fun openInstaller(update: DownloadedUpdate): AppUpdateInstallResult =
+        runCatching { openInstallerOrThrow(update) }
+            .getOrElse { error ->
+                AppUpdateInstallResult.Failed(
+                    error.message ?: "Falha ao abrir o instalador.",
+                )
+            }
+
+    private fun openInstallerOrThrow(update: DownloadedUpdate): AppUpdateInstallResult {
         val apkFile = File(update.filePath)
         check(apkFile.isFile) {
             "APK baixado não encontrado."
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            !appContext.packageManager.canRequestPackageInstalls()
-        ) {
+        if (!canRequestPackageInstalls()) {
             openUnknownAppsSettings()
-            error("Permita instalar apps desconhecidos para o Sentinela Cam TV e tente novamente.")
+            return AppUpdateInstallResult.PermissionRequired
         }
 
         val apkUri = FileProvider.getUriForFile(
@@ -42,6 +52,7 @@ class AppUpdateInstaller(
         }
 
         appContext.startActivity(installIntent)
+        return AppUpdateInstallResult.InstallerOpened
     }
 
     private fun openUnknownAppsSettings() {
@@ -62,4 +73,10 @@ class AppUpdateInstaller(
     private companion object {
         private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
     }
+}
+
+sealed interface AppUpdateInstallResult {
+    data object InstallerOpened : AppUpdateInstallResult
+    data object PermissionRequired : AppUpdateInstallResult
+    data class Failed(val message: String) : AppUpdateInstallResult
 }

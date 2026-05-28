@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sentinela.camtv.BuildConfig
+import com.sentinela.camtv.data.update.AppUpdateInstallResult
 import com.sentinela.camtv.data.update.AppUpdateInstaller
 import com.sentinela.camtv.data.update.AvailableUpdate
 import com.sentinela.camtv.data.update.DownloadedUpdate
@@ -79,31 +80,24 @@ class SettingsViewModel(
                 showDialog = true,
                 message = "Buscando atualização...",
             )
-            updateRepository.checkForUpdate(
+            val result = updateRepository.checkForUpdate(
                 currentVersionName = BuildConfig.VERSION_NAME,
                 supportedAbis = Build.SUPPORTED_ABIS.toList(),
-            ).fold(
-                onSuccess = { result ->
-                    updateState.value = when (result) {
-                        is UpdateCheckResult.Available -> UpdateUiState(
-                            showDialog = true,
-                            message = "Versão ${result.update.versionName} disponível.",
-                            availableUpdate = result.update,
-                        )
+            ).getOrElse { error ->
+                updateState.value = UpdateUiState(
+                    showDialog = true,
+                    message = "Falha ao buscar atualização: ${error.message ?: "erro desconhecido"}",
+                )
+                return@launch
+            }
 
-                        UpdateCheckResult.UpToDate -> UpdateUiState(
-                            showDialog = true,
-                            message = "Você já está na versão mais recente.",
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    updateState.value = UpdateUiState(
-                        showDialog = true,
-                        message = "Falha ao buscar atualização: ${error.message ?: "erro desconhecido"}",
-                    )
-                },
-            )
+            updateState.value = when (result) {
+                is UpdateCheckResult.Available -> updateStateForAvailableUpdate(result.update)
+                UpdateCheckResult.UpToDate -> UpdateUiState(
+                    showDialog = true,
+                    message = "Você já está na versão mais recente.",
+                )
+            }
         }
     }
 
@@ -144,8 +138,44 @@ class SettingsViewModel(
         openInstaller(downloaded)
     }
 
+    fun retryInstallerAfterPermissionResume() {
+        val current = updateState.value
+        val downloaded = current.downloadedUpdate ?: return
+        if (!UpdateUiStateReducer.shouldRetryInstallerOnResume(
+                state = current,
+                canRequestPackageInstalls = appUpdateInstaller.canRequestPackageInstalls(),
+            )
+        ) {
+            return
+        }
+
+        updateState.value = current.copy(
+            showDialog = true,
+            message = "Permissão concedida. Abrindo instalador...",
+        )
+        openInstaller(downloaded)
+    }
+
     fun dismissUpdateDialog() {
         updateState.value = updateState.value.copy(showDialog = false)
+    }
+
+    private suspend fun updateStateForAvailableUpdate(update: AvailableUpdate): UpdateUiState {
+        val downloaded = updateRepository.findDownloadedUpdate(update).getOrNull()
+        return if (downloaded != null) {
+            UpdateUiState(
+                showDialog = true,
+                message = "Atualização já baixada.",
+                availableUpdate = update,
+                downloadedUpdate = downloaded,
+            )
+        } else {
+            UpdateUiState(
+                showDialog = true,
+                message = "Versão ${update.versionName} disponível.",
+                availableUpdate = update,
+            )
+        }
     }
 
     private fun exportFile(block: suspend () -> Result<File>) {
@@ -160,30 +190,63 @@ class SettingsViewModel(
     }
 
     private fun openInstaller(downloaded: DownloadedUpdate) {
-        appUpdateInstaller.openInstaller(downloaded).fold(
-            onSuccess = {
-                updateState.value = updateState.value.copy(
-                    downloading = false,
-                    showDialog = true,
-                    message = "Instalador aberto. Confirme a atualização no Android.",
-                )
-            },
-            onFailure = { error ->
-                updateState.value = updateState.value.copy(
-                    downloading = false,
-                    showDialog = true,
-                    message = error.message ?: "Falha ao abrir o instalador.",
-                )
-            },
+        updateState.value = UpdateUiStateReducer.afterInstallResult(
+            current = updateState.value,
+            downloaded = downloaded,
+            result = appUpdateInstaller.openInstaller(downloaded),
         )
     }
 }
 
-private data class UpdateUiState(
+internal data class UpdateUiState(
     val message: String? = null,
     val showDialog: Boolean = false,
     val checking: Boolean = false,
     val downloading: Boolean = false,
     val availableUpdate: AvailableUpdate? = null,
     val downloadedUpdate: DownloadedUpdate? = null,
+    val waitingForInstallPermission: Boolean = false,
 )
+
+internal object UpdateUiStateReducer {
+    fun afterInstallResult(
+        current: UpdateUiState,
+        downloaded: DownloadedUpdate,
+        result: AppUpdateInstallResult,
+    ): UpdateUiState =
+        when (result) {
+            AppUpdateInstallResult.InstallerOpened -> current.copy(
+                downloading = false,
+                showDialog = true,
+                message = "Instalador aberto. Confirme a atualização no Android.",
+                downloadedUpdate = downloaded,
+                waitingForInstallPermission = false,
+            )
+
+            AppUpdateInstallResult.PermissionRequired -> current.copy(
+                downloading = false,
+                showDialog = true,
+                message = "Permissão necessária. Ative a instalação por este app e volte para continuar.",
+                downloadedUpdate = downloaded,
+                waitingForInstallPermission = true,
+            )
+
+            is AppUpdateInstallResult.Failed -> current.copy(
+                downloading = false,
+                showDialog = true,
+                message = result.message,
+                downloadedUpdate = downloaded,
+                waitingForInstallPermission = false,
+            )
+        }
+
+    fun shouldRetryInstallerOnResume(
+        state: UpdateUiState,
+        canRequestPackageInstalls: Boolean,
+    ): Boolean =
+        state.waitingForInstallPermission &&
+            state.downloadedUpdate != null &&
+            !state.checking &&
+            !state.downloading &&
+            canRequestPackageInstalls
+}

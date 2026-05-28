@@ -7,4 +7,6 @@ interface UpdateRepository {
     ): Result<UpdateCheckResult>
 
     suspend fun downloadUpdate(update: AvailableUpdate): Result<DownloadedUpdate>
+
+    suspend fun findDownloadedUpdate(update: AvailableUpdate): Result<DownloadedUpdate?>
 }

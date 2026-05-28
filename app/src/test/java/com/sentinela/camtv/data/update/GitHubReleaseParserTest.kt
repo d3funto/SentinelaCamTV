@@ -18,6 +18,10 @@ class GitHubReleaseParserTest {
                   "browser_download_url": "https://example.invalid/armeabi.apk"
                 },
                 {
+                  "name": "SHA256SUMS.txt",
+                  "browser_download_url": "https://example.invalid/SHA256SUMS.txt"
+                },
+                {
                   "name": "",
                   "browser_download_url": "https://example.invalid/ignored.apk"
                 },
@@ -38,6 +42,10 @@ class GitHubReleaseParserTest {
                 GitHubReleaseAsset(
                     name = "SentinelaCamTV-v1.0.1-armeabi-v7a.apk",
                     downloadUrl = "https://example.invalid/armeabi.apk",
+                ),
+                GitHubReleaseAsset(
+                    name = "SHA256SUMS.txt",
+                    downloadUrl = "https://example.invalid/SHA256SUMS.txt",
                 ),
             ),
             release.assets,

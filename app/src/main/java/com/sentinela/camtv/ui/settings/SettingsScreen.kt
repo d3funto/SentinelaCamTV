@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.sentinela.camtv.ui.design.SentinelaTvColors
@@ -55,15 +59,29 @@ fun SettingsScreen(
     onCheckForUpdate: () -> Unit,
     onDownloadUpdate: () -> Unit,
     onInstallDownloadedUpdate: () -> Unit,
+    onResumeAfterUpdatePermission: () -> Unit,
     onDismissUpdateDialog: () -> Unit,
     onOpenHome: () -> Unit,
     onBack: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val lifecycleOwner = LocalLifecycleOwner.current
     BackHandler(onBack = onBack)
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    DisposableEffect(lifecycleOwner, onResumeAfterUpdatePermission) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                onResumeAfterUpdatePermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     BoxWithConstraints(
@@ -82,12 +100,6 @@ fun SettingsScreen(
                 .size(contentWidth, contentHeight)
                 .align(Alignment.Center),
         ) {
-            Text(
-                text = "Logs, atualização e informações do aplicativo.",
-                modifier = Modifier.offset(x = 82f.sdp(scale), y = 72f.sdp(scale)),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 18f.ssp(scale),
-            )
             Spacer(
                 modifier = Modifier
                     .offset(x = 75f.sdp(scale), y = 132f.sdp(scale))

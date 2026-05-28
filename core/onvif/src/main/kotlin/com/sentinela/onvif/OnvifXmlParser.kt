@@ -7,6 +7,9 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 
 object OnvifXmlParser {
+    internal const val MAX_XML_BYTES = 512 * 1024
+    private val doctypePattern = Regex("<!\\s*DOCTYPE", RegexOption.IGNORE_CASE)
+
     fun parseProbeMatches(xml: String): List<DiscoveredOnvifDevice> {
         val document = xml.toDocument()
         return document.elements("ProbeMatch").map { match ->
@@ -60,6 +63,14 @@ object OnvifXmlParser {
     }
 
     private fun String.toDocument(): Document {
+        val bytes = toByteArray(Charsets.UTF_8)
+        require(bytes.size <= MAX_XML_BYTES) {
+            "XML ONVIF excede o limite de tamanho."
+        }
+        require(!doctypePattern.containsMatchIn(this)) {
+            "DOCTYPE não é permitido em XML ONVIF."
+        }
+
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
             safeSetFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
@@ -69,7 +80,7 @@ object OnvifXmlParser {
             runCatching { isXIncludeAware = false }
             runCatching { isExpandEntityReferences = false }
         }
-        return factory.newDocumentBuilder().parse(ByteArrayInputStream(toByteArray()))
+        return factory.newDocumentBuilder().parse(ByteArrayInputStream(bytes))
     }
 
     private fun DocumentBuilderFactory.safeSetFeature(

@@ -2,7 +2,7 @@ package com.sentinela.camtv.ui.labels
 
 import com.sentinela.camtv.player.AudioMode
 import com.sentinela.camtv.player.TransmissionMode
-import com.sentinela.camtv.ui.player.StreamQuality
+import com.sentinela.camtv.player.StreamQuality
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

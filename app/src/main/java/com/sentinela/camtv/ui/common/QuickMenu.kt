@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.sentinela.camtv.ui.design.SentinelaTvColors
+import com.sentinela.camtv.ui.design.SentinelaTvShape
 
 data class QuickMenuAction(
     val label: String,
@@ -57,15 +57,15 @@ fun QuickMenu(
 
     Column(
         modifier = modifier
-            .widthIn(min = 320.dp, max = 430.dp)
+            .widthIn(min = 260.dp, max = 340.dp)
             .background(
                 color = SentinelaTvColors.panel.copy(alpha = 0.94f),
-                shape = RoundedCornerShape(18.dp),
+                shape = SentinelaTvShape.dialog,
             )
             .border(
                 width = 1.dp,
                 color = SentinelaTvColors.panelBorder,
-                shape = RoundedCornerShape(18.dp),
+                shape = SentinelaTvShape.dialog,
             )
             .padding(18.dp)
             .focusGroup(),
@@ -96,7 +96,6 @@ private fun QuickMenuButton(
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
-    val shape = RoundedCornerShape(14.dp)
 
     Box(
         modifier = modifier
@@ -112,14 +111,14 @@ private fun QuickMenuButton(
             .semantics { role = Role.Button }
             .background(
                 color = SentinelaTvColors.control,
-                shape = shape,
+                shape = SentinelaTvShape.control,
             )
             .border(
                 width = if (focused) 3.dp else 0.dp,
                 color = if (focused) SentinelaTvColors.controlFocused else Color.Transparent,
-                shape = shape,
+                shape = SentinelaTvShape.control,
             )
-            .padding(horizontal = 24.dp, vertical = 15.dp)
+            .padding(horizontal = 18.dp, vertical = 13.dp)
             .focusable(),
         contentAlignment = Alignment.CenterStart,
     ) {

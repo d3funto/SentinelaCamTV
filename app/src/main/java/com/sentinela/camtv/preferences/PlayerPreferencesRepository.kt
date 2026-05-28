@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -24,6 +25,9 @@ class PlayerPreferencesRepository(
             showMosaicInfo = preferences[SHOW_MOSAIC_INFO] ?: preferences[SHOW_PLAYER_INFO] ?: true,
             showFullscreenInfo = preferences[SHOW_FULLSCREEN_INFO] ?: preferences[SHOW_PLAYER_INFO] ?: true,
             fullscreenQuickMenuHintSeen = preferences[FULLSCREEN_QUICK_MENU_HINT_SEEN] ?: false,
+            mosaicStreamQuality = preferences[MOSAIC_STREAM_QUALITY]
+                ?.let { value -> runCatching { StreamQuality.valueOf(value) }.getOrNull() }
+                ?: StreamQuality.SD,
             globalTransmissionMode = preferences[GLOBAL_TRANSMISSION_MODE]
                 ?.let { value -> runCatching { TransmissionMode.valueOf(value) }.getOrNull() }
                 ?: TransmissionMode.MENOR_LATENCIA,
@@ -58,6 +62,12 @@ class PlayerPreferencesRepository(
         }
     }
 
+    override suspend fun setMosaicStreamQuality(streamQuality: StreamQuality) {
+        dataStore.edit { preferences ->
+            preferences[MOSAIC_STREAM_QUALITY] = streamQuality.name
+        }
+    }
+
     override suspend fun setGlobalTransmissionMode(transmissionMode: TransmissionMode) {
         dataStore.edit { preferences ->
             preferences[GLOBAL_TRANSMISSION_MODE] = transmissionMode.name
@@ -69,6 +79,7 @@ class PlayerPreferencesRepository(
         val SHOW_MOSAIC_INFO = booleanPreferencesKey("show_mosaic_info")
         val SHOW_FULLSCREEN_INFO = booleanPreferencesKey("show_fullscreen_info")
         val FULLSCREEN_QUICK_MENU_HINT_SEEN = booleanPreferencesKey("fullscreen_quick_menu_hint_seen")
+        val MOSAIC_STREAM_QUALITY = stringPreferencesKey("mosaic_stream_quality")
         val GLOBAL_TRANSMISSION_MODE = stringPreferencesKey("global_transmission_mode")
     }
 }

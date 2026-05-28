@@ -1,6 +1,8 @@
 package com.sentinela.camtv.data.update
 
 object ReleaseAssetSelector {
+    private const val CHECKSUM_FILE_NAME = "SHA256SUMS.txt"
+
     fun selectApk(
         assets: List<GitHubReleaseAsset>,
         supportedAbis: List<String>,
@@ -22,6 +24,11 @@ object ReleaseAssetSelector {
 
         return null
     }
+
+    fun selectSha256Sums(assets: List<GitHubReleaseAsset>): GitHubReleaseAsset? =
+        assets.firstOrNull { asset ->
+            asset.name.equals(CHECKSUM_FILE_NAME, ignoreCase = true)
+        }
 
     private fun String.containsAbiMarker(value: String): Boolean =
         Regex(

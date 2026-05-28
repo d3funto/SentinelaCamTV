@@ -92,6 +92,9 @@ Privacidade/F-Droid:
 - Não enviar dados das câmeras para nuvem.
 - Não logar senhas, credenciais, URLs RTSP completas, tokens ou dados sensíveis.
 - Não publicar imagens reais das câmeras sem sanitização.
+- Antes de preparar release, revisar IPs reais, credenciais, URLs RTSP com userinfo, APKs, keystores, `local.properties` e arquivos locais.
+- GitHub e F-Droid são os destinos principais do projeto.
+- Para a futura variante F-Droid, considerar remover atualizador interno, permissão de instalar APK e qualquer fluxo que contorne a loja.
 
 Performance:
 - Otimize agressivamente para 1~2 GB RAM.

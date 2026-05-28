@@ -31,12 +31,14 @@ class GitHubReleaseUpdateRepository(
                 assets = release.assets,
                 supportedAbis = supportedAbis,
             ) ?: error("Nenhum APK compatível foi encontrado nesta versão.")
+            val checksumAsset = ReleaseAssetSelector.selectSha256Sums(release.assets)
 
             UpdateCheckResult.Available(
                 AvailableUpdate(
                     versionName = remoteVersionName,
                     assetName = asset.name,
                     downloadUrl = asset.downloadUrl,
+                    checksumUrl = checksumAsset?.downloadUrl,
                     releasePageUrl = release.htmlUrl,
                     changelog = release.body,
                 ),
@@ -54,11 +56,15 @@ class GitHubReleaseUpdateRepository(
                     ?.filter { file -> file.extension.equals("apk", ignoreCase = true) }
                     ?.forEach { file -> file.delete() }
 
-                val targetFile = File(updatesDir, update.assetName.sanitizedFileName())
+                val targetFile = targetFileFor(update)
                 val temporaryFile = File(updatesDir, "${targetFile.name}.download")
                 downloadToFile(
                     sourceUrl = update.downloadUrl,
                     targetFile = temporaryFile,
+                )
+                validateSha256(
+                    update = update,
+                    downloadedFile = temporaryFile,
                 )
                 if (targetFile.exists()) targetFile.delete()
                 check(temporaryFile.renameTo(targetFile)) {
@@ -73,6 +79,47 @@ class GitHubReleaseUpdateRepository(
                 throw IllegalStateException(error.toUserFacingMessage())
             }
         }
+
+    override suspend fun findDownloadedUpdate(update: AvailableUpdate): Result<DownloadedUpdate?> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val targetFile = targetFileFor(update)
+                if (!targetFile.isFile) {
+                    return@runCatching null
+                }
+
+                runCatching {
+                    val checksumUrl = update.checksumUrl
+                        ?: error("SHA256SUMS.txt não foi encontrado nesta versão.")
+                    val downloaded = DownloadedUpdateCache.validDownloadedUpdateOrNull(
+                        update = update,
+                        downloadedFile = targetFile,
+                        sumsText = getText(checksumUrl),
+                    ) ?: error("Falha ao validar o APK baixado.")
+                    downloaded
+                }.getOrElse {
+                    targetFile.delete()
+                    null
+                }
+            }
+        }
+
+    private fun validateSha256(
+        update: AvailableUpdate,
+        downloadedFile: File,
+    ) {
+        val checksumUrl = update.checksumUrl
+            ?: error("SHA256SUMS.txt não foi encontrado nesta versão.")
+        val checksums = getText(checksumUrl)
+        val expectedSha256 = Sha256Sums.expectedHashFor(
+            sumsText = checksums,
+            fileName = update.assetName,
+        ) ?: error("SHA-256 do APK não foi encontrado no SHA256SUMS.txt.")
+        val actualSha256 = Sha256Sums.sha256(downloadedFile)
+        check(expectedSha256.equals(actualSha256, ignoreCase = true)) {
+            "Falha ao validar o APK baixado."
+        }
+    }
 
     private fun getText(url: String): String {
         val connection = openConnection(url)
@@ -93,8 +140,18 @@ class GitHubReleaseUpdateRepository(
         }
     }
 
+    private fun targetFileFor(update: AvailableUpdate): File =
+        DownloadedUpdateCache.targetFile(
+            updatesDir = updatesDir,
+            assetName = update.assetName,
+        )
+
     private fun openConnection(url: String): HttpURLConnection {
-        val connection = URL(url).openConnection() as HttpURLConnection
+        val parsedUrl = URL(url)
+        check(parsedUrl.protocol.equals("https", ignoreCase = true)) {
+            "Atualização exige conexão HTTPS."
+        }
+        val connection = parsedUrl.openConnection() as HttpURLConnection
         connection.connectTimeout = NETWORK_TIMEOUT_MS
         connection.readTimeout = NETWORK_TIMEOUT_MS
         connection.setRequestProperty("User-Agent", "SentinelaCamTV")
@@ -105,10 +162,6 @@ class GitHubReleaseUpdateRepository(
         }
         return connection
     }
-
-    private fun String.sanitizedFileName(): String =
-        replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "sentinela-update.apk" }
 
     private fun Throwable.toUserFacingMessage(): String {
         val details = message.orEmpty()

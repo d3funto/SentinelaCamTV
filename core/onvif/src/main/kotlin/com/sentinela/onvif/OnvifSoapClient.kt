@@ -1,6 +1,8 @@
 package com.sentinela.onvif
 
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
@@ -54,7 +56,7 @@ class OnvifSoapClient(
         } else {
             connection.errorStream ?: throw IOException("ONVIF HTTP $responseCode")
         }
-        val xml = stream.bufferedReader().use { it.readText() }
+        val xml = stream.readOnvifXmlText()
         OnvifXmlParser.parseSoapFault(xml)?.let { fault ->
             throw IOException("ONVIF SOAP fault ${fault.code}: ${fault.reason}")
         }
@@ -68,4 +70,20 @@ class OnvifSoapClient(
 
     private fun OnvifCredentials?.usernameToken(): OnvifUsernameToken? =
         this?.takeIf { it.isConfigured }?.let(usernameTokenFactory::create)
+
+    private fun InputStream.readOnvifXmlText(): String = use { input ->
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var totalBytes = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            totalBytes += read
+            if (totalBytes > OnvifXmlParser.MAX_XML_BYTES) {
+                throw IOException("Resposta ONVIF excede o limite de tamanho.")
+            }
+            output.write(buffer, 0, read)
+        }
+        output.toString(Charsets.UTF_8.name())
+    }
 }

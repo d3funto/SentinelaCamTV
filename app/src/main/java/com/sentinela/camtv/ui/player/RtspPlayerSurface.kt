@@ -5,8 +5,10 @@ import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,11 +27,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.ui.PlayerView
 import com.sentinela.camtv.player.AudioMode
 import com.sentinela.camtv.player.CameraStreamRequest
@@ -46,10 +50,12 @@ import com.sentinela.camtv.player.defaultTransportMode
 import com.sentinela.camtv.player.isTerminalError
 import com.sentinela.camtv.player.shortMessage
 import com.sentinela.camtv.player.statusText
+import com.sentinela.camtv.ui.design.SentinelaTvColors
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
 private const val PLAYER_LOG_TAG = "SentinelaPlayer"
+private const val UNKNOWN_BUFFER_MS = -1L
 
 @Composable
 fun RtspPlayerSurface(
@@ -62,11 +68,23 @@ fun RtspPlayerSurface(
         mutableStateOf<PlayerConnectionState>(PlayerConnectionState.Connecting)
     }
     var videoInfo by remember(rtspUrl, request.subtype) { mutableStateOf("") }
+    var videoFrameRate by remember(rtspUrl, request.subtype) { mutableStateOf<Float?>(null) }
+    var videoMimeType by remember(rtspUrl, request.subtype) { mutableStateOf<String?>(null) }
+    var videoCodecs by remember(rtspUrl, request.subtype) { mutableStateOf<String?>(null) }
+    var decoderName by remember(rtspUrl, request.subtype) { mutableStateOf<String?>(null) }
+    var bandwidthEstimateBps by remember(rtspUrl, request.subtype) { mutableStateOf<Long?>(null) }
+    var droppedFrames by remember(rtspUrl, request.subtype) { mutableIntStateOf(0) }
     var reconnectAttempt by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableIntStateOf(0) }
     var reconnectGeneration by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableIntStateOf(0) }
     var reconnectToken by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableIntStateOf(0) }
     var playerEnabled by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf(true) }
     var consecutiveFailures by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableIntStateOf(0) }
+    var readyMs by remember(rtspUrl, request.subtype, reconnectGeneration) { mutableStateOf<Long?>(null) }
+    var firstFrameMs by remember(rtspUrl, request.subtype, reconnectGeneration) { mutableStateOf<Long?>(null) }
+    var renderedFirstFrame by remember(rtspUrl, request.subtype, reconnectGeneration) { mutableStateOf(false) }
+    var lastReconnectReason by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
+    var lastWatchdogReason by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
+    var lastError by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
     var decoderFallbackEnabled by remember(
         rtspUrl,
         request.subtype,
@@ -77,6 +95,9 @@ fun RtspPlayerSurface(
     }
     var transportMode by remember(rtspUrl, request.subtype, request.transmissionMode) {
         mutableStateOf(request.transmissionMode.defaultTransportMode())
+    }
+    val initialTransportMode = remember(rtspUrl, request.subtype, request.transmissionMode) {
+        request.transmissionMode.defaultTransportMode()
     }
 
     val context = LocalContext.current
@@ -154,6 +175,16 @@ fun RtspPlayerSurface(
         } else {
             PlayerReconnectPolicy.transportModeForFailureCount(nextFailureCount)
         }
+        lastReconnectReason = message
+        if (
+            message.contains("watchdog", ignoreCase = true) ||
+            logMessage.contains("watchdog", ignoreCase = true) ||
+            message.contains("sem primeiro frame", ignoreCase = true) ||
+            logMessage.contains("sem primeiro frame", ignoreCase = true) ||
+            logMessage.contains("black frame", ignoreCase = true)
+        ) {
+            lastWatchdogReason = logMessage
+        }
 
         logRtspWarning(
             request = request,
@@ -214,6 +245,27 @@ fun RtspPlayerSurface(
         }
     }
 
+    LaunchedEffect(playerEnabled, reconnectGeneration, connectionState, renderedFirstFrame, request.mode) {
+        if (!playerEnabled || connectionState !is PlayerConnectionState.Playing || renderedFirstFrame) {
+            return@LaunchedEffect
+        }
+
+        val timeoutMs = PlayerReconnectPolicy.firstFrameWatchdogTimeoutFor(request.mode)
+        delay(timeoutMs)
+
+        if (playerEnabled && connectionState is PlayerConnectionState.Playing && !renderedFirstFrame) {
+            val reason = if (videoInfo.isBlank()) {
+                "sem primeiro frame"
+            } else {
+                "playing sem vídeo útil"
+            }
+            scheduleReconnect(
+                message = "watchdog: $reason",
+                logMessage = "black frame watchdog: $reason; surface sem frame renderizado",
+            )
+        }
+    }
+
     DisposableEffect(player) {
         if (player == null) {
             onDispose {}
@@ -235,12 +287,13 @@ fun RtspPlayerSurface(
                     }.also { nextState ->
                         if (nextState is PlayerConnectionState.Playing && !readyLogged) {
                             readyLogged = true
+                            readyMs = SystemClock.elapsedRealtime() - playerStartedAtMs
                             logRtspInfo(
                                 request = request,
                                 transportMode = transportMode,
                                 reconnectAttempt = reconnectAttempt,
                                 consecutiveFailures = consecutiveFailures,
-                                message = "READY em ${SystemClock.elapsedRealtime() - playerStartedAtMs}ms",
+                                message = "READY em ${readyMs}ms",
                             )
                         }
 
@@ -265,6 +318,20 @@ fun RtspPlayerSurface(
                     }
                 }
 
+                override fun onRenderedFirstFrame() {
+                    if (!renderedFirstFrame) {
+                        renderedFirstFrame = true
+                        firstFrameMs = SystemClock.elapsedRealtime() - playerStartedAtMs
+                        logRtspInfo(
+                            request = request,
+                            transportMode = transportMode,
+                            reconnectAttempt = reconnectAttempt,
+                            consecutiveFailures = consecutiveFailures,
+                            message = "primeiro frame renderizado em ${firstFrameMs}ms",
+                        )
+                    }
+                }
+
                 override fun onPlayerError(error: PlaybackException) {
                     val mappedState = PlayerErrorMapper.map(error, transportMode)
                     if (
@@ -274,6 +341,7 @@ fun RtspPlayerSurface(
                         decoderFallbackEnabled = true
                     }
                     connectionState = mappedState
+                    lastError = error.shortMessage()
                     scheduleReconnect(
                         message = mappedState.statusText(),
                         logMessage = error.detailedMessage(),
@@ -292,17 +360,90 @@ fun RtspPlayerSurface(
                 }
             }
 
+            val analyticsListener = object : AnalyticsListener {
+                override fun onBandwidthEstimate(
+                    eventTime: AnalyticsListener.EventTime,
+                    totalLoadTimeMs: Int,
+                    totalBytesLoaded: Long,
+                    bitrateEstimate: Long,
+                ) {
+                    if (bitrateEstimate > 0) {
+                        bandwidthEstimateBps = bitrateEstimate
+                    }
+                }
+
+                override fun onVideoDecoderInitialized(
+                    eventTime: AnalyticsListener.EventTime,
+                    decoderNameValue: String,
+                    initializedTimestampMs: Long,
+                    initializationDurationMs: Long,
+                ) {
+                    decoderName = decoderNameValue
+                }
+
+                override fun onVideoInputFormatChanged(
+                    eventTime: AnalyticsListener.EventTime,
+                    format: Format,
+                    decoderReuseEvaluation: DecoderReuseEvaluation?,
+                ) {
+                    videoMimeType = format.sampleMimeType
+                    videoCodecs = format.codecs
+                    videoFrameRate = format.frameRate.takeIf { it > 0f }
+                    if (format.width > 0 && format.height > 0) {
+                        videoInfo = "${format.width}x${format.height}"
+                    }
+                }
+
+                override fun onDroppedVideoFrames(
+                    eventTime: AnalyticsListener.EventTime,
+                    droppedFramesValue: Int,
+                    elapsedMs: Long,
+                ) {
+                    droppedFrames += droppedFramesValue
+                }
+            }
+
             player.addListener(listener)
+            player.addAnalyticsListener(analyticsListener)
 
             onDispose {
+                player.removeAnalyticsListener(analyticsListener)
                 player.removeListener(listener)
                 player.release()
             }
         }
     }
 
+    val diagnostics = PlayerDiagnostics(
+        cameraName = request.camera.name,
+        connectionState = connectionState,
+        subtype = request.subtype,
+        transmissionMode = request.transmissionMode,
+        initialTransportMode = initialTransportMode,
+        transportMode = transportMode,
+        decoderFallbackEnabled = decoderFallbackEnabled,
+        videoSize = videoInfo.takeIf { it.isNotBlank() },
+        framesPerSecond = videoFrameRate,
+        bandwidthEstimateBps = bandwidthEstimateBps,
+        bufferMs = player?.totalBufferedDuration
+            ?.takeIf { it != C.TIME_UNSET && it >= 0 }
+            ?: UNKNOWN_BUFFER_MS,
+        mimeType = videoMimeType,
+        codecs = videoCodecs,
+        decoderName = decoderName,
+        droppedFrames = droppedFrames,
+        reconnectAttempt = reconnectAttempt,
+        consecutiveFailures = consecutiveFailures,
+        readyMs = readyMs,
+        firstFrameMs = firstFrameMs,
+        renderedFirstFrame = renderedFirstFrame,
+        lastReconnectReason = lastReconnectReason,
+        lastWatchdogReason = lastWatchdogReason,
+        lastError = lastError,
+    )
+
     Box(
-        modifier = modifier.background(Color.Black),
+        modifier = modifier.background(SentinelaTvColors.playerBackground),
     ) {
         PlayerAndroidView(
             player = player,
@@ -311,9 +452,7 @@ fun RtspPlayerSurface(
 
         if (showPlayerInfo) {
             PlayerInfoOverlay(
-                cameraName = request.camera.name,
-                videoInfo = videoInfo,
-                connectionState = connectionState,
+                diagnostics = diagnostics,
             )
         }
     }
@@ -461,46 +600,37 @@ private fun PlayerAndroidView(
 
 @Composable
 private fun BoxScope.PlayerInfoOverlay(
-    cameraName: String,
-    videoInfo: String,
-    connectionState: PlayerConnectionState,
+    diagnostics: PlayerDiagnostics,
 ) {
-    Box(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .background(Color(0x99000000))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-    ) {
-        BasicText(
-            text = if (videoInfo.isNotBlank()) {
-                "$cameraName - $videoInfo"
-            } else {
-                cameraName
-            },
-            style = TextStyle(
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-        )
-    }
+    val lines = PlayerDiagnosticsFormatter.overlayLines(diagnostics)
+    val compact = diagnostics.subtype != 0
+    val fontSize = if (compact) 9.sp else 12.sp
+    val lineHeight = if (compact) 11.sp else 15.sp
 
     Box(
         modifier = Modifier
-            .align(Alignment.BottomStart)
-            .background(Color(0x99000000))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .align(Alignment.TopStart)
+            .background(SentinelaTvColors.playerInfoScrim)
+            .widthIn(max = if (compact) 260.dp else 520.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
-        BasicText(
-            text = connectionState.statusText(),
-            style = TextStyle(
-                color = if (connectionState.isTerminalError()) {
-                    Color(0xFFFF7777)
-                } else {
-                    Color(0xFF9CCEDB)
-                },
-                fontSize = 12.sp,
-            ),
-        )
+        Column {
+            lines.forEachIndexed { index, line ->
+                BasicText(
+                    text = line,
+                    style = TextStyle(
+                        color = when {
+                            diagnostics.connectionState.isTerminalError() && index >= lines.lastIndex - 1 ->
+                                SentinelaTvColors.playerErrorText
+                            index == 0 -> SentinelaTvColors.onVideoOverlay
+                            else -> SentinelaTvColors.playerInfoText
+                        },
+                        fontSize = fontSize,
+                        lineHeight = lineHeight,
+                        fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
+                    ),
+                )
+            }
+        }
     }
 }

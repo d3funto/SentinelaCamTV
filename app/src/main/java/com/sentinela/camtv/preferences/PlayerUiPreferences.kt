@@ -1,5 +1,6 @@
 package com.sentinela.camtv.preferences
 
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
 
 data class PlayerUiPreferences(
@@ -7,5 +8,6 @@ data class PlayerUiPreferences(
     val showMosaicInfo: Boolean = true,
     val showFullscreenInfo: Boolean = true,
     val fullscreenQuickMenuHintSeen: Boolean = false,
+    val mosaicStreamQuality: StreamQuality = StreamQuality.SD,
     val globalTransmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
 )

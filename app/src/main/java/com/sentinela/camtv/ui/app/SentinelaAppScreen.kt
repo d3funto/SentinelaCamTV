@@ -89,6 +89,7 @@ fun SentinelaAppScreen() {
                 onCheckForUpdate = settingsViewModel::checkForUpdate,
                 onDownloadUpdate = settingsViewModel::downloadUpdate,
                 onInstallDownloadedUpdate = settingsViewModel::installDownloadedUpdate,
+                onResumeAfterUpdatePermission = settingsViewModel::retryInstallerAfterPermissionResume,
                 onDismissUpdateDialog = settingsViewModel::dismissUpdateDialog,
                 onOpenHome = appViewModel::openHome,
                 onBack = appViewModel::goBack,

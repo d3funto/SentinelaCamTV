@@ -50,7 +50,24 @@ object RtspCameraFormValidator {
     }
 
     private fun String.isValidRtspUrl(): Boolean =
-        startsWith("rtsp://", ignoreCase = true)
+        runCatching {
+            val uri = URI(trim())
+            uri.scheme.equals("rtsp", ignoreCase = true) &&
+                uri.host?.isValidRtspHost() == true
+        }.getOrDefault(false)
+
+    private fun String.isValidRtspHost(): Boolean {
+        if (isBlank()) return false
+        if (!all { char -> char.isDigit() || char == '.' }) return true
+
+        val parts = split('.')
+        return parts.size == 4 &&
+            parts.all { part ->
+                part.isNotBlank() &&
+                    part.length <= 3 &&
+                    part.toIntOrNull()?.let { value -> value in 0..255 } == true
+            }
+    }
 
     private fun String.hasUserInfo(): Boolean =
         runCatching { URI(trim()).userInfo != null }.getOrDefault(false)

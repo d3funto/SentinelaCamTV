@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -33,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sentinela.camtv.player.CameraStreamRequest
+import com.sentinela.camtv.ui.design.SentinelaTvColors
 import com.sentinela.camtv.ui.player.RtspPlayerSurface
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -61,6 +61,14 @@ fun RtspCameraTile(
     LaunchedEffect(requestInitialFocus, focusEnabled) {
         if (requestInitialFocus && focusEnabled) {
             focusRequester.requestFocus()
+        }
+    }
+
+    LaunchedEffect(focusEnabled) {
+        if (!focusEnabled) {
+            confirmKeyLongClickJob?.cancel()
+            confirmKeyLongClickJob = null
+            confirmKeyLongClickHandled = false
         }
     }
 
@@ -106,9 +114,9 @@ fun RtspCameraTile(
             .border(
                 width = if (showFocusedBorder || selectedForReorder) 4.dp else 1.dp,
                 color = when {
-                    selectedForReorder -> Color(0xFFFFD166)
-                    showFocusedBorder -> Color(0xFF27D3FF)
-                    else -> Color(0xFF375866)
+                    selectedForReorder -> SentinelaTvColors.cameraTileEditSelectedBorder
+                    showFocusedBorder -> SentinelaTvColors.cameraTileFocusedBorder
+                    else -> SentinelaTvColors.cameraTileBorder
                 },
             )
             .onFocusChanged { focusState ->
@@ -117,7 +125,7 @@ fun RtspCameraTile(
             .combinedClickable(
                 enabled = focusEnabled,
                 onClick = onClick,
-                onLongClick = onLongClick,
+                onLongClick = null,
             )
             .focusable(enabled = focusEnabled),
     ) {
@@ -132,13 +140,13 @@ fun RtspCameraTile(
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .background(Color(0xCC000000))
+                    .background(SentinelaTvColors.cameraTileInfoScrim)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 BasicText(
                     text = "Bloqueado",
                     style = TextStyle(
-                        color = Color.White,
+                        color = SentinelaTvColors.onVideoOverlay,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     ),

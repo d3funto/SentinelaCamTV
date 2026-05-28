@@ -32,6 +32,38 @@ class RtspCameraFormValidatorTest {
     }
 
     @Test
+    fun rejectsIncompleteMainRtspUrlWithoutHost() {
+        val validation = RtspCameraFormValidator.validate(
+            name = "DVR",
+            mainRtspUrl = "rtsp://192.168.100",
+            subRtspUrl = "",
+            username = "",
+            password = "",
+        )
+
+        assertEquals(
+            "Informe uma URL RTSP principal válida.",
+            (validation as RtspCameraFormValidation.Invalid).message,
+        )
+    }
+
+    @Test
+    fun rejectsIncompleteSubRtspUrlWithoutHost() {
+        val validation = RtspCameraFormValidator.validate(
+            name = "DVR",
+            mainRtspUrl = "rtsp://198.51.100.10/live",
+            subRtspUrl = "rtsp://192.168.100",
+            username = "",
+            password = "",
+        )
+
+        assertEquals(
+            "Informe uma URL RTSP secundária válida ou deixe o campo vazio.",
+            (validation as RtspCameraFormValidation.Invalid).message,
+        )
+    }
+
+    @Test
     fun rejectsMainUrlWithEmbeddedCredentials() {
         val validation = RtspCameraFormValidator.validate(
             name = "Portao",
@@ -92,5 +124,20 @@ class RtspCameraFormValidatorTest {
         assertEquals("admin", form.username)
         assertEquals("secret", form.password)
         assertEquals("rtsp://198.51.100.10/sub", form.subRtspUrl)
+    }
+
+    @Test
+    fun allowsSameRtspUrlInMainAndSubFields() {
+        val validation = RtspCameraFormValidator.validate(
+            name = "DVR",
+            mainRtspUrl = "rtsp://198.51.100.10/live",
+            subRtspUrl = "rtsp://198.51.100.10/live",
+            username = "",
+            password = "",
+        )
+
+        val form = (validation as RtspCameraFormValidation.Valid).form
+        assertEquals("rtsp://198.51.100.10/live", form.mainRtspUrl)
+        assertEquals("rtsp://198.51.100.10/live", form.subRtspUrl)
     }
 }

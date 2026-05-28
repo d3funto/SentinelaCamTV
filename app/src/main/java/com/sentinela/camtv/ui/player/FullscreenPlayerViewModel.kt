@@ -6,6 +6,7 @@ import com.sentinela.camtv.domain.Camera
 import com.sentinela.camtv.player.AudioMode
 import com.sentinela.camtv.player.CameraStreamRequest
 import com.sentinela.camtv.player.PlayerMode
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
 import com.sentinela.camtv.player.next
 import com.sentinela.camtv.player.streamRequestFor
@@ -17,11 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-enum class StreamQuality {
-    HD,
-    SD,
-}
 
 data class FullscreenPlayerUiState(
     val camera: Camera? = null,
@@ -36,7 +32,7 @@ data class FullscreenPlayerUiState(
         val activeCamera = camera ?: return null
         val baseRequest = activeCamera.streamRequestFor(PlayerMode.Fullscreen)
         return baseRequest.copy(
-            subtype = if (streamQuality == StreamQuality.HD) 0 else 1,
+            subtype = streamQuality.subtype,
             audioMode = audioMode,
             transmissionMode = transmissionMode,
         )

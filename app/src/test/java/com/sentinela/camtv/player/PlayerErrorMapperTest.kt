@@ -25,4 +25,15 @@ class PlayerErrorMapperTest {
             ),
         )
     }
+
+    @Test
+    fun media3SourceErrorMapsToFriendlyRtspFailure() {
+        assertEquals(
+            PlayerConnectionState.UnknownError("Erro: falha ao abrir o fluxo RTSP"),
+            PlayerErrorMapper.mapDiagnosticsText(
+                details = "ERROR_CODE_IO_UNSPECIFIED: Source error",
+                transportMode = RtspTransportMode.TcpOnly,
+            ),
+        )
+    }
 }

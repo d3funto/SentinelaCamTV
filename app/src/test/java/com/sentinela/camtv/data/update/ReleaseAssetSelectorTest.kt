@@ -70,6 +70,18 @@ class ReleaseAssetSelectorTest {
         assertNull(selected)
     }
 
+    @Test
+    fun selectSha256SumsFindsChecksumAsset() {
+        val selected = ReleaseAssetSelector.selectSha256Sums(
+            assets = listOf(
+                asset("SentinelaCamTV-v1.0.1-armeabi-v7a.apk"),
+                asset("SHA256SUMS.txt"),
+            ),
+        )
+
+        assertEquals("SHA256SUMS.txt", selected?.name)
+    }
+
     private fun asset(name: String): GitHubReleaseAsset =
         GitHubReleaseAsset(
             name = name,

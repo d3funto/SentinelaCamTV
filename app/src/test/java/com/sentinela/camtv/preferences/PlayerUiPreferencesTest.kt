@@ -1,5 +1,6 @@
 package com.sentinela.camtv.preferences
 
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,5 +29,10 @@ class PlayerUiPreferencesTest {
     @Test
     fun fullscreenQuickMenuHintStartsUnseen() {
         assertFalse(PlayerUiPreferences().fullscreenQuickMenuHintSeen)
+    }
+
+    @Test
+    fun mosaicStreamQualityDefaultsToSd() {
+        assertEquals(StreamQuality.SD, PlayerUiPreferences().mosaicStreamQuality)
     }
 }

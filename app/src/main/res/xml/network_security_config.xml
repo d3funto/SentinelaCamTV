@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- ONVIF local legado em DVRs/NVRs costuma usar HTTP por IP privado.
+         O app deve bloquear HTTP público em OnvifEndpointPolicy. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />

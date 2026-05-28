@@ -34,6 +34,8 @@ object PlayerErrorMapper {
                 PlayerConnectionState.Timeout
             normalizedDetails.hasAny("econnrefused", "connection refused", "connectexception") ->
                 PlayerConnectionState.ConnectionRefused
+            normalizedDetails.hasAny("source error", "error_code_io_unspecified") ->
+                PlayerConnectionState.UnknownError("Erro: falha ao abrir o fluxo RTSP")
             normalizedDetails.hasAny("network", "unreachable", "unknownhost", "enetunreach") ->
                 PlayerConnectionState.NetworkOffline
             else -> PlayerConnectionState.UnknownError(fallbackMessage)

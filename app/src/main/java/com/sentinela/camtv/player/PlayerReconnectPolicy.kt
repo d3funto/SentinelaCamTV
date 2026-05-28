@@ -5,6 +5,7 @@ object PlayerReconnectPolicy {
     const val CONNECTING_WATCHDOG_MS = 12_000L
     const val FULLSCREEN_BUFFERING_WATCHDOG_MS = 8_000L
     const val MOSAIC_BUFFERING_WATCHDOG_MS = 12_000L
+    const val FIRST_FRAME_WATCHDOG_MS = 5_000L
 
     fun transportModeForFailureCount(consecutiveFailures: Int): RtspTransportMode =
         if (consecutiveFailures >= TCP_FALLBACK_FAILURE_THRESHOLD) {
@@ -32,5 +33,10 @@ object PlayerReconnectPolicy {
         PlayerConnectionState.UdpLikelyBlocked,
         is PlayerConnectionState.Reconnecting,
         is PlayerConnectionState.UnknownError -> null
+    }
+
+    fun firstFrameWatchdogTimeoutFor(mode: PlayerMode): Long = when (mode) {
+        PlayerMode.Mosaic -> FIRST_FRAME_WATCHDOG_MS
+        PlayerMode.Fullscreen -> FIRST_FRAME_WATCHDOG_MS
     }
 }

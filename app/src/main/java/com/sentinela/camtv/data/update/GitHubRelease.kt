@@ -16,6 +16,7 @@ data class AvailableUpdate(
     val versionName: String,
     val assetName: String,
     val downloadUrl: String,
+    val checksumUrl: String?,
     val releasePageUrl: String,
     val changelog: String,
 )

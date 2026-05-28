@@ -1,8 +1,8 @@
 package com.sentinela.camtv.ui.labels
 
 import com.sentinela.camtv.player.AudioMode
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
-import com.sentinela.camtv.ui.player.StreamQuality
 
 fun activationLabel(active: Boolean): String =
     if (active) "Ativadas" else "Desativadas"

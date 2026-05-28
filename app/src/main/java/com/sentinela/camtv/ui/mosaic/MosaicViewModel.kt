@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sentinela.camtv.data.camera.CameraRepository
 import com.sentinela.camtv.domain.Camera
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.TransmissionMode
 import com.sentinela.camtv.player.next
 import com.sentinela.camtv.preferences.PlayerUiPreferences
@@ -26,6 +27,7 @@ data class MosaicUiState(
     val selectedForSwapId: String? = null,
     val cameraPendingDeletion: Camera? = null,
     val fullscreenCamera: Camera? = null,
+    val streamQuality: StreamQuality = StreamQuality.SD,
     val transmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
     val preferences: PlayerUiPreferences = PlayerUiPreferences(),
 )
@@ -92,6 +94,7 @@ class MosaicViewModel(
             selectedForSwapId = core.selectedForSwapId,
             cameraPendingDeletion = core.cameras.firstOrNull { it.id == pendingDeletionId },
             fullscreenCamera = core.cameras.firstOrNull { it.id == fullscreenId },
+            streamQuality = core.preferences.mosaicStreamQuality,
             transmissionMode = core.preferences.globalTransmissionMode,
             preferences = core.preferences,
         )
@@ -154,6 +157,12 @@ class MosaicViewModel(
     fun toggleInfo() {
         viewModelScope.launch {
             settingsRepository.setShowMosaicInfo(!state.value.showInfo)
+        }
+    }
+
+    fun toggleStreamQuality() {
+        viewModelScope.launch {
+            settingsRepository.setMosaicStreamQuality(state.value.streamQuality.next())
         }
     }
 

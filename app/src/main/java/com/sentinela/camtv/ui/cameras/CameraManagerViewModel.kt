@@ -122,6 +122,7 @@ class CameraManagerViewModel(
 
     fun discoverOnvifDevices() {
         viewModelScope.launch {
+            authDialogMessage.value = null
             scanning.value = true
             statusMessage.value = "Procurando dispositivos ONVIF..."
             onvifRepository.discover()
@@ -135,7 +136,9 @@ class CameraManagerViewModel(
                     }
                 }
                 .onFailure { error ->
-                    statusMessage.value = "Falha na descoberta ONVIF: ${error.message ?: "erro desconhecido"}"
+                    val message = "Falha na descoberta ONVIF: ${error.message ?: "erro desconhecido"}"
+                    statusMessage.value = message
+                    authDialogMessage.value = message
                 }
             scanning.value = false
         }
@@ -179,10 +182,11 @@ class CameraManagerViewModel(
 
     fun saveSelectedOnvifCamera() {
         viewModelScope.launch {
+            authDialogMessage.value = null
             val currentState = state.value
             val device = currentState.selectedDevice
             if (device == null) {
-                statusMessage.value = "Selecione um dispositivo ONVIF."
+                authDialogMessage.value = "Selecione um dispositivo ONVIF."
                 return@launch
             }
 
@@ -242,13 +246,9 @@ class CameraManagerViewModel(
                     )
                 }
             }.onSuccess {
-                statusMessage.value = "Câmera(s) ONVIF conectada(s). Vá para Ver câmeras para visualizar."
+                authDialogMessage.value = "Câmera(s) ONVIF conectada(s). Vá para Ver câmeras para visualizar."
             }.onFailure { error ->
-                val message = error.toOnvifUserMessage()
-                if (error.isLikelyAuthenticationError()) {
-                    authDialogMessage.value = message
-                }
-                statusMessage.value = message
+                authDialogMessage.value = error.toOnvifUserMessage()
             }
 
             saving.value = false
@@ -257,6 +257,7 @@ class CameraManagerViewModel(
 
     fun connectManualRtspCamera() {
         viewModelScope.launch {
+            authDialogMessage.value = null
             val validation = RtspCameraFormValidator.validate(
                 name = state.value.rtspName,
                 mainRtspUrl = state.value.rtspMainUrl,
@@ -265,7 +266,7 @@ class CameraManagerViewModel(
                 password = state.value.rtspPassword,
             )
             if (validation is RtspCameraFormValidation.Invalid) {
-                statusMessage.value = validation.message
+                authDialogMessage.value = validation.message
                 return@launch
             }
             val form = (validation as RtspCameraFormValidation.Valid).form
@@ -286,7 +287,7 @@ class CameraManagerViewModel(
                 streamName = "Fluxo principal",
             )
             if (mainResult is RtspConnectionTestResult.Failure) {
-                statusMessage.value = mainResult.userMessage("Fluxo principal")
+                authDialogMessage.value = mainResult.userMessage("Fluxo principal")
                 rtspConnecting.value = false
                 return@launch
             }
@@ -300,7 +301,7 @@ class CameraManagerViewModel(
                     streamName = "Fluxo secundário",
                 )
                 if (subResult is RtspConnectionTestResult.Failure) {
-                    statusMessage.value = subResult.userMessage("Fluxo secundário")
+                    authDialogMessage.value = subResult.userMessage("Fluxo secundário")
                     rtspConnecting.value = false
                     return@launch
                 }
@@ -321,7 +322,7 @@ class CameraManagerViewModel(
                 rtspMainUrl.value = draft.mainUrl
                 rtspSubUrl.value = draft.subUrl
                 rtspPassword.value = ""
-                statusMessage.value = "Câmera RTSP conectada. Vá para Ver câmeras para visualizar."
+                authDialogMessage.value = "Câmera RTSP conectada. Vá para Ver câmeras para visualizar."
             }.onFailure { error ->
                 authDialogMessage.value = "Não foi possível salvar a câmera: ${error.message ?: "URL inválida"}"
             }

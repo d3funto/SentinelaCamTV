@@ -1,6 +1,7 @@
 package com.sentinela.onvif
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -108,5 +109,32 @@ class OnvifXmlParserTest {
 
         assertEquals("s:Sender", fault?.code)
         assertEquals("Not authorized", fault?.reason)
+    }
+
+    @Test
+    fun rejectsDoctypeBeforeParsing() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            OnvifXmlParser.parseProbeMatches(
+                """
+                <!DOCTYPE root [
+                    <!ENTITY external SYSTEM "file:///etc/passwd">
+                ]>
+                <root>&external;</root>
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals("DOCTYPE não é permitido em XML ONVIF.", error.message)
+    }
+
+    @Test
+    fun rejectsOversizedXmlBeforeParsing() {
+        val oversizedXml = "<root>${"a".repeat(OnvifXmlParser.MAX_XML_BYTES)}</root>"
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            OnvifXmlParser.parseProbeMatches(oversizedXml)
+        }
+
+        assertEquals("XML ONVIF excede o limite de tamanho.", error.message)
     }
 }

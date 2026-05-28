@@ -1,6 +1,7 @@
 package com.sentinela.camtv.preferences
 
 import com.sentinela.camtv.player.TransmissionMode
+import com.sentinela.camtv.player.StreamQuality
 import kotlinx.coroutines.flow.Flow
 
 interface SettingsRepository {
@@ -9,5 +10,6 @@ interface SettingsRepository {
     suspend fun setShowMosaicInfo(showMosaicInfo: Boolean)
     suspend fun setShowFullscreenInfo(showFullscreenInfo: Boolean)
     suspend fun setFullscreenQuickMenuHintSeen(seen: Boolean)
+    suspend fun setMosaicStreamQuality(streamQuality: StreamQuality)
     suspend fun setGlobalTransmissionMode(transmissionMode: TransmissionMode)
 }
