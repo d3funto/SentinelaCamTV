@@ -7,6 +7,38 @@ import com.sentinela.camtv.player.TransmissionMode
 import com.sentinela.camtv.player.statusText
 import com.sentinela.camtv.ui.labels.transmissionModeLabel
 
+internal enum class DecoderKind {
+    Hardware,
+    Software,
+    Unknown,
+}
+
+internal object DecoderClassifier {
+    fun classify(decoderName: String?): DecoderKind {
+        val normalized = decoderName?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+            ?: return DecoderKind.Unknown
+        return when {
+            normalized.contains("google") ||
+                normalized.contains("c2.android") ||
+                normalized.contains("software") ||
+                normalized.contains("ffmpeg") -> DecoderKind.Software
+
+            normalized.contains("amlogic") ||
+                normalized.contains("qcom") ||
+                normalized.contains("qualcomm") ||
+                normalized.contains("mediatek") ||
+                normalized.contains("mtk") ||
+                normalized.contains("exynos") ||
+                normalized.contains("rockchip") ||
+                normalized.contains("realtek") ||
+                normalized.contains("hisilicon") ||
+                normalized.contains("mstar") -> DecoderKind.Hardware
+
+            else -> DecoderKind.Unknown
+        }
+    }
+}
+
 internal data class PlayerDiagnostics(
     val cameraName: String,
     val connectionState: PlayerConnectionState,
@@ -15,6 +47,7 @@ internal data class PlayerDiagnostics(
     val initialTransportMode: RtspTransportMode,
     val transportMode: RtspTransportMode,
     val decoderFallbackEnabled: Boolean,
+    val autoQualityDowngraded: Boolean = false,
     val videoSize: String? = null,
     val framesPerSecond: Float? = null,
     val bandwidthEstimateBps: Long? = null,
@@ -34,9 +67,19 @@ internal data class PlayerDiagnostics(
 )
 
 internal object PlayerDiagnosticsFormatter {
+    fun overlayLines(
+        diagnostics: PlayerDiagnostics,
+        showPlayerInfo: Boolean,
+    ): List<String> = if (showPlayerInfo) overlayLines(diagnostics) else emptyList()
+
     fun overlayLines(diagnostics: PlayerDiagnostics): List<String> = buildList {
         val quality = StreamQuality.entries.firstOrNull { it.subtype == diagnostics.subtype } ?: StreamQuality.SD
-        add("${diagnostics.cameraName} • ${quality.name} • subtype ${diagnostics.subtype}")
+        val qualityLabel = if (diagnostics.autoQualityDowngraded && quality == StreamQuality.SD) {
+            "SD auto"
+        } else {
+            quality.name
+        }
+        add("${diagnostics.cameraName} • $qualityLabel • subtype ${diagnostics.subtype}")
 
         val videoLine = listOfNotNull(
             diagnostics.videoSize,
@@ -49,6 +92,9 @@ internal object PlayerDiagnosticsFormatter {
 
         diagnostics.codecLabel()?.let { add("Codec: $it") }
         add("Decoder: ${diagnostics.decoderLabel()}")
+        if (diagnostics.decoderFallbackEnabled) {
+            add("Fallback: ${diagnostics.fallbackLabel()}")
+        }
 
         val networkLine = listOfNotNull(
             diagnostics.bandwidthEstimateBps?.takeIf { it > 0 }?.let { "Banda ${it.kbps()} kb/s" },
@@ -86,14 +132,20 @@ internal object PlayerDiagnosticsFormatter {
     }
 
     private fun PlayerDiagnostics.decoderLabel(): String {
-        val name = decoderName ?: return if (decoderFallbackEnabled) "SW fallback" else "desconhecido"
-        val software = decoderFallbackEnabled ||
-            name.contains("google", ignoreCase = true) ||
-            name.contains("android", ignoreCase = true) ||
-            name.contains("software", ignoreCase = true) ||
-            name.contains("ffmpeg", ignoreCase = true)
-        return "${if (software) "SW" else "HW"} • $name"
+        val name = decoderName ?: return "aguardando"
+        val kind = when (decoderKind()) {
+            DecoderKind.Hardware -> "HW"
+            DecoderKind.Software -> "SW"
+            DecoderKind.Unknown -> "?"
+        }
+        return "$kind • $name"
     }
+
+    private fun PlayerDiagnostics.decoderKind(): DecoderKind =
+        DecoderClassifier.classify(decoderName)
+
+    private fun PlayerDiagnostics.fallbackLabel(): String =
+        if (decoderKind() == DecoderKind.Software) "em uso" else "permitido"
 
     private fun RtspTransportMode.shortLabel(): String = when (this) {
         RtspTransportMode.UdpFirst -> "UDP"

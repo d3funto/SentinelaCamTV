@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +39,13 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.ui.PlayerView
 import com.sentinela.camtv.player.AudioMode
 import com.sentinela.camtv.player.CameraStreamRequest
+import com.sentinela.camtv.player.PlayerMode
 import com.sentinela.camtv.player.PlayerConnectionState
 import com.sentinela.camtv.player.PlayerErrorMapper
 import com.sentinela.camtv.player.PlayerReconnectPolicy
 import com.sentinela.camtv.player.ReconnectBackoffPolicy
 import com.sentinela.camtv.player.RtspTransportMode
+import com.sentinela.camtv.player.StreamQuality
 import com.sentinela.camtv.player.applyAudioMode
 import com.sentinela.camtv.player.buildRtspPlayer
 import com.sentinela.camtv.player.defaultPlayerStreamConfig
@@ -56,6 +59,7 @@ import timber.log.Timber
 
 private const val PLAYER_LOG_TAG = "SentinelaPlayer"
 private const val UNKNOWN_BUFFER_MS = -1L
+private const val PLAYER_INFO_REFRESH_MS = 1_000L
 
 @Composable
 fun RtspPlayerSurface(
@@ -63,6 +67,9 @@ fun RtspPlayerSurface(
     rtspUrl: String,
     showPlayerInfo: Boolean,
     modifier: Modifier = Modifier,
+    autoQualityDowngraded: Boolean = false,
+    onSoftwareDecoderInMosaicHd: (cameraId: String, decoderName: String) -> Unit = { _, _ -> },
+    onDecoderFailureInMosaicHd: (cameraId: String, reason: String) -> Unit = { _, _ -> },
 ) {
     var connectionState by remember(rtspUrl, request.subtype, request.audioMode, request.transmissionMode) {
         mutableStateOf<PlayerConnectionState>(PlayerConnectionState.Connecting)
@@ -85,6 +92,7 @@ fun RtspPlayerSurface(
     var lastReconnectReason by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
     var lastWatchdogReason by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
     var lastError by remember(rtspUrl, request.subtype, request.transmissionMode) { mutableStateOf<String?>(null) }
+    var softwareDecoderReported by remember(rtspUrl, request.subtype, request.mode) { mutableStateOf(false) }
     var decoderFallbackEnabled by remember(
         rtspUrl,
         request.subtype,
@@ -101,6 +109,7 @@ fun RtspPlayerSurface(
     }
 
     val context = LocalContext.current
+    val showPlayerInfoState by rememberUpdatedState(showPlayerInfo)
     val backoffPolicy = remember { ReconnectBackoffPolicy() }
     val streamConfig = remember(
         request.mode,
@@ -202,6 +211,12 @@ fun RtspPlayerSurface(
         reconnectToken += 1
     }
 
+    fun clearRecoveredDiagnostics() {
+        lastError = null
+        lastReconnectReason = null
+        lastWatchdogReason = null
+    }
+
     LaunchedEffect(reconnectToken) {
         if (reconnectToken == 0) {
             return@LaunchedEffect
@@ -272,6 +287,7 @@ fun RtspPlayerSurface(
         } else {
             val listener = object : Player.Listener {
                 private var readyLogged = false
+                private var playingLogged = false
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
@@ -288,6 +304,7 @@ fun RtspPlayerSurface(
                         if (nextState is PlayerConnectionState.Playing && !readyLogged) {
                             readyLogged = true
                             readyMs = SystemClock.elapsedRealtime() - playerStartedAtMs
+                            clearRecoveredDiagnostics()
                             logRtspInfo(
                                 request = request,
                                 transportMode = transportMode,
@@ -305,13 +322,17 @@ fun RtspPlayerSurface(
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (isPlaying) {
-                        logRtspInfo(
-                            request = request,
-                            transportMode = transportMode,
-                            reconnectAttempt = reconnectAttempt,
-                            consecutiveFailures = consecutiveFailures,
-                            message = "reproducao ativa; resetando contadores",
-                        )
+                        clearRecoveredDiagnostics()
+                        if (!playingLogged) {
+                            playingLogged = true
+                            logRtspInfo(
+                                request = request,
+                                transportMode = transportMode,
+                                reconnectAttempt = reconnectAttempt,
+                                consecutiveFailures = consecutiveFailures,
+                                message = "reproducao ativa; resetando contadores",
+                            )
+                        }
                         reconnectAttempt = 0
                         consecutiveFailures = 0
                         connectionState = PlayerConnectionState.Playing
@@ -322,6 +343,7 @@ fun RtspPlayerSurface(
                     if (!renderedFirstFrame) {
                         renderedFirstFrame = true
                         firstFrameMs = SystemClock.elapsedRealtime() - playerStartedAtMs
+                        clearRecoveredDiagnostics()
                         logRtspInfo(
                             request = request,
                             transportMode = transportMode,
@@ -334,6 +356,29 @@ fun RtspPlayerSurface(
 
                 override fun onPlayerError(error: PlaybackException) {
                     val mappedState = PlayerErrorMapper.map(error, transportMode)
+                    if (
+                        mappedState == PlayerConnectionState.UnsupportedCodec &&
+                        request.mode == PlayerMode.Mosaic &&
+                        request.subtype == StreamQuality.HD.subtype
+                    ) {
+                        connectionState = mappedState
+                        lastError = error.shortMessage()
+                        logRtspWarning(
+                            request = request,
+                            transportMode = transportMode,
+                            reconnectAttempt = reconnectAttempt,
+                            consecutiveFailures = consecutiveFailures,
+                            message = "falha de decoder em HD no mosaico; mantendo HD ate falha repetida",
+                            throwable = error,
+                        )
+                        onDecoderFailureInMosaicHd(request.camera.id, error.shortMessage())
+                        scheduleReconnect(
+                            message = mappedState.statusText(),
+                            logMessage = error.detailedMessage(),
+                            throwable = error,
+                        )
+                        return
+                    }
                     if (
                         mappedState == PlayerConnectionState.UnsupportedCodec &&
                         !decoderFallbackEnabled
@@ -367,7 +412,7 @@ fun RtspPlayerSurface(
                     totalBytesLoaded: Long,
                     bitrateEstimate: Long,
                 ) {
-                    if (bitrateEstimate > 0) {
+                    if (showPlayerInfoState && bitrateEstimate > 0) {
                         bandwidthEstimateBps = bitrateEstimate
                     }
                 }
@@ -379,6 +424,15 @@ fun RtspPlayerSurface(
                     initializationDurationMs: Long,
                 ) {
                     decoderName = decoderNameValue
+                    if (
+                        request.mode == PlayerMode.Mosaic &&
+                        request.subtype == StreamQuality.HD.subtype &&
+                        DecoderClassifier.classify(decoderNameValue) == DecoderKind.Software &&
+                        !softwareDecoderReported
+                    ) {
+                        softwareDecoderReported = true
+                        onSoftwareDecoderInMosaicHd(request.camera.id, decoderNameValue)
+                    }
                 }
 
                 override fun onVideoInputFormatChanged(
@@ -386,9 +440,11 @@ fun RtspPlayerSurface(
                     format: Format,
                     decoderReuseEvaluation: DecoderReuseEvaluation?,
                 ) {
-                    videoMimeType = format.sampleMimeType
-                    videoCodecs = format.codecs
-                    videoFrameRate = format.frameRate.takeIf { it > 0f }
+                    if (showPlayerInfoState) {
+                        videoMimeType = format.sampleMimeType
+                        videoCodecs = format.codecs
+                        videoFrameRate = format.frameRate.takeIf { it > 0f }
+                    }
                     if (format.width > 0 && format.height > 0) {
                         videoInfo = "${format.width}x${format.height}"
                     }
@@ -399,7 +455,9 @@ fun RtspPlayerSurface(
                     droppedFramesValue: Int,
                     elapsedMs: Long,
                 ) {
-                    droppedFrames += droppedFramesValue
+                    if (showPlayerInfoState) {
+                        droppedFrames += droppedFramesValue
+                    }
                 }
             }
 
@@ -422,6 +480,7 @@ fun RtspPlayerSurface(
         initialTransportMode = initialTransportMode,
         transportMode = transportMode,
         decoderFallbackEnabled = decoderFallbackEnabled,
+        autoQualityDowngraded = autoQualityDowngraded,
         videoSize = videoInfo.takeIf { it.isNotBlank() },
         framesPerSecond = videoFrameRate,
         bandwidthEstimateBps = bandwidthEstimateBps,
@@ -602,8 +661,18 @@ private fun PlayerAndroidView(
 private fun BoxScope.PlayerInfoOverlay(
     diagnostics: PlayerDiagnostics,
 ) {
-    val lines = PlayerDiagnosticsFormatter.overlayLines(diagnostics)
-    val compact = diagnostics.subtype != 0
+    val latestDiagnostics by rememberUpdatedState(diagnostics)
+    var visibleDiagnostics by remember { mutableStateOf(diagnostics) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            visibleDiagnostics = latestDiagnostics
+            delay(PLAYER_INFO_REFRESH_MS)
+        }
+    }
+
+    val lines = PlayerDiagnosticsFormatter.overlayLines(visibleDiagnostics)
+    val compact = visibleDiagnostics.subtype != 0
     val fontSize = if (compact) 9.sp else 12.sp
     val lineHeight = if (compact) 11.sp else 15.sp
 
@@ -620,7 +689,7 @@ private fun BoxScope.PlayerInfoOverlay(
                     text = line,
                     style = TextStyle(
                         color = when {
-                            diagnostics.connectionState.isTerminalError() && index >= lines.lastIndex - 1 ->
+                            visibleDiagnostics.connectionState.isTerminalError() && index >= lines.lastIndex - 1 ->
                                 SentinelaTvColors.playerErrorText
                             index == 0 -> SentinelaTvColors.onVideoOverlay
                             else -> SentinelaTvColors.playerInfoText

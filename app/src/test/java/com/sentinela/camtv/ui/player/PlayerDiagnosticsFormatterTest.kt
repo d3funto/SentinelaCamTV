@@ -3,6 +3,8 @@ package com.sentinela.camtv.ui.player
 import com.sentinela.camtv.player.PlayerConnectionState
 import com.sentinela.camtv.player.RtspTransportMode
 import com.sentinela.camtv.player.TransmissionMode
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -57,8 +59,128 @@ class PlayerDiagnosticsFormatterTest {
         )
 
         assertTrue(lines.any { it.contains("RTSP: UDP -> TCP fallback") })
-        assertTrue(lines.any { it.contains("Decoder: SW fallback") })
+        assertTrue(lines.any { it.contains("Decoder: aguardando") })
+        assertTrue(lines.any { it.contains("Fallback: permitido") })
         assertTrue(lines.any { it.contains("sem 1º frame") })
         assertTrue(lines.any { it.contains("Watchdog: black frame watchdog") })
+    }
+
+    @Test
+    fun amlogicDecoderStaysHardwareEvenWithFallbackEnabled() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            PlayerDiagnostics(
+                cameraName = "CAM1",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = true,
+                decoderName = "OMX.amlogic.avc.decoder.awesome2",
+                renderedFirstFrame = true,
+            ),
+        )
+
+        assertTrue(lines.any { it == "Decoder: HW • OMX.amlogic.avc.decoder.awesome2" })
+        assertTrue(lines.any { it == "Fallback: permitido" })
+        assertFalse(lines.any { it.contains("Decoder: SW") })
+    }
+
+    @Test
+    fun googleDecoderIsSoftware() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            PlayerDiagnostics(
+                cameraName = "CAM1",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = false,
+                decoderName = "OMX.google.h264.decoder",
+                renderedFirstFrame = true,
+            ),
+        )
+
+        assertTrue(lines.any { it == "Decoder: SW • OMX.google.h264.decoder" })
+    }
+
+    @Test
+    fun softwareDecoderShowsFallbackInUse() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            PlayerDiagnostics(
+                cameraName = "CAM5",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = true,
+                decoderName = "OMX.google.h264.decoder",
+                renderedFirstFrame = true,
+            ),
+        )
+
+        assertTrue(lines.any { it.contains("Decoder: SW") && it.contains("OMX.google.h264.decoder") })
+        assertTrue(lines.any { it == "Fallback: em uso" })
+    }
+
+    @Test
+    fun androidC2DecoderIsSoftware() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            PlayerDiagnostics(
+                cameraName = "CAM1",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = false,
+                decoderName = "c2.android.avc.decoder",
+                renderedFirstFrame = true,
+            ),
+        )
+
+        assertTrue(lines.any { it == "Decoder: SW • c2.android.avc.decoder" })
+    }
+
+    @Test
+    fun infoDisabledReturnsNoDiagnosticLines() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            diagnostics = PlayerDiagnostics(
+                cameraName = "CAM1",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = false,
+                decoderName = "OMX.amlogic.avc.decoder.awesome2",
+                renderedFirstFrame = true,
+            ),
+            showPlayerInfo = false,
+        )
+
+        assertEquals(emptyList<String>(), lines)
+    }
+
+    @Test
+    fun autoDowngradedTileShowsSdAuto() {
+        val lines = PlayerDiagnosticsFormatter.overlayLines(
+            PlayerDiagnostics(
+                cameraName = "CAM1",
+                connectionState = PlayerConnectionState.Playing,
+                subtype = 1,
+                transmissionMode = TransmissionMode.MENOR_LATENCIA,
+                initialTransportMode = RtspTransportMode.UdpFirst,
+                transportMode = RtspTransportMode.UdpFirst,
+                decoderFallbackEnabled = false,
+                autoQualityDowngraded = true,
+                decoderName = "OMX.amlogic.avc.decoder.awesome2",
+                renderedFirstFrame = true,
+            ),
+        )
+
+        assertTrue(lines.first().contains("SD auto"))
     }
 }

@@ -157,6 +157,8 @@ fun MosaicScreen(
             rtspUrlBuilder = rtspUrlBuilder,
             onCameraClick = mosaicViewModel::onCameraClick,
             onCameraLongClick = mosaicViewModel::requestCameraDeletion,
+            onMosaicHdSoftwareDecoder = mosaicViewModel::fallbackCameraToSdFromSoftwareDecoder,
+            onMosaicHdDecoderFailure = mosaicViewModel::reportMosaicHdDecoderFailure,
             tilesFocusable = !state.quickMenuVisible && state.cameraPendingDeletion == null,
             showFocusIndicator = showCameraFocusIndicator || state.reorderMode,
             modifier = Modifier.fillMaxSize(),
@@ -219,6 +221,8 @@ private fun MosaicGrid(
     rtspUrlBuilder: IntelbrasRtspUrlBuilder,
     onCameraClick: (Camera) -> Unit,
     onCameraLongClick: (Camera) -> Unit,
+    onMosaicHdSoftwareDecoder: (cameraId: String, reason: String) -> Unit,
+    onMosaicHdDecoderFailure: (cameraId: String, reason: String) -> Unit,
     tilesFocusable: Boolean,
     showFocusIndicator: Boolean,
     modifier: Modifier = Modifier,
@@ -235,6 +239,8 @@ private fun MosaicGrid(
                 rtspUrlBuilder = rtspUrlBuilder,
                 onCameraClick = onCameraClick,
                 onCameraLongClick = onCameraLongClick,
+                onMosaicHdSoftwareDecoder = onMosaicHdSoftwareDecoder,
+                onMosaicHdDecoderFailure = onMosaicHdDecoderFailure,
                 tilesFocusable = tilesFocusable,
                 showFocusIndicator = showFocusIndicator,
                 rowWeight = if (state.cameras.size <= 5 && index == 1) 1.15f else 1f,
@@ -257,6 +263,8 @@ private fun ColumnScope.MosaicCameraRow(
     rtspUrlBuilder: IntelbrasRtspUrlBuilder,
     onCameraClick: (Camera) -> Unit,
     onCameraLongClick: (Camera) -> Unit,
+    onMosaicHdSoftwareDecoder: (cameraId: String, reason: String) -> Unit,
+    onMosaicHdDecoderFailure: (cameraId: String, reason: String) -> Unit,
     tilesFocusable: Boolean,
     showFocusIndicator: Boolean,
     rowWeight: Float,
@@ -271,9 +279,11 @@ private fun ColumnScope.MosaicCameraRow(
     ) {
         cameras.forEach { camera ->
             key(camera.id) {
-                val request = remember(camera, state.streamQuality, state.transmissionMode) {
+                val effectiveQuality = state.effectiveStreamQuality(camera.id)
+                val autoQualityDowngraded = state.isAutoQualityDowngraded(camera.id)
+                val request = remember(camera, effectiveQuality, state.transmissionMode) {
                     camera.streamRequestFor(PlayerMode.Mosaic).copy(
-                        subtype = state.streamQuality.subtype,
+                        subtype = effectiveQuality.subtype,
                         transmissionMode = state.transmissionMode,
                     )
                 }
@@ -285,10 +295,13 @@ private fun ColumnScope.MosaicCameraRow(
                     request = request,
                     rtspUrl = rtspUrl,
                     showPlayerInfo = state.showInfo,
+                    autoQualityDowngraded = autoQualityDowngraded,
                     selectedForReorder = state.selectedForSwapId == camera.id,
                     requestInitialFocus = camera.id == state.cameras.firstOrNull()?.id,
                     focusEnabled = tilesFocusable,
                     showFocusIndicator = showFocusIndicator,
+                    onMosaicHdSoftwareDecoder = onMosaicHdSoftwareDecoder,
+                    onMosaicHdDecoderFailure = onMosaicHdDecoderFailure,
                     onClick = {
                         onCameraClick(camera)
                     },

@@ -1,5 +1,6 @@
 package com.sentinela.camtv.ui.mosaic
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -31,12 +33,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sentinela.camtv.BuildConfig
 import com.sentinela.camtv.player.CameraStreamRequest
 import com.sentinela.camtv.ui.design.SentinelaTvColors
 import com.sentinela.camtv.ui.player.RtspPlayerSurface
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -44,19 +48,27 @@ fun RtspCameraTile(
     request: CameraStreamRequest,
     rtspUrl: String,
     showPlayerInfo: Boolean,
+    autoQualityDowngraded: Boolean,
     selectedForReorder: Boolean,
     requestInitialFocus: Boolean,
     focusEnabled: Boolean,
     showFocusIndicator: Boolean,
+    onMosaicHdSoftwareDecoder: (cameraId: String, reason: String) -> Unit,
+    onMosaicHdDecoderFailure: (cameraId: String, reason: String) -> Unit,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
     var confirmKeyLongClickJob by remember { mutableStateOf<Job?>(null) }
-    var confirmKeyLongClickHandled by remember { mutableStateOf(false) }
+    var confirmKeyDownAtMs by remember { mutableStateOf<Long?>(null) }
+    val confirmKeyLongPressState = remember {
+        ConfirmKeyLongPressState(CONFIRM_KEY_LONG_PRESS_DELAY_MS)
+    }
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
+    val latestOnClick by rememberUpdatedState(onClick)
+    val latestOnLongClick by rememberUpdatedState(onLongClick)
 
     LaunchedEffect(requestInitialFocus, focusEnabled) {
         if (requestInitialFocus && focusEnabled) {
@@ -68,7 +80,8 @@ fun RtspCameraTile(
         if (!focusEnabled) {
             confirmKeyLongClickJob?.cancel()
             confirmKeyLongClickJob = null
-            confirmKeyLongClickHandled = false
+            confirmKeyDownAtMs = null
+            confirmKeyLongPressState.reset()
         }
     }
 
@@ -77,6 +90,20 @@ fun RtspCameraTile(
     DisposableEffect(Unit) {
         onDispose {
             confirmKeyLongClickJob?.cancel()
+        }
+    }
+
+    fun logConfirmKey(message: String) {
+        if (BuildConfig.DEBUG) {
+            Timber.tag("SentinelaInput").d("camera=${request.camera.id} $message")
+        }
+    }
+
+    fun handleConfirmKeyAction(action: ConfirmKeyPressAction) {
+        when (action) {
+            ConfirmKeyPressAction.Click -> latestOnClick()
+            ConfirmKeyPressAction.LongClick -> latestOnLongClick?.invoke()
+            ConfirmKeyPressAction.None -> Unit
         }
     }
 
@@ -90,22 +117,56 @@ fun RtspCameraTile(
 
                 when (keyEvent.type) {
                     KeyEventType.KeyDown -> {
-                        if (confirmKeyLongClickJob == null && !confirmKeyLongClickHandled) {
+                        val nativeEvent = keyEvent.nativeKeyEvent
+                        val nowMs = SystemClock.uptimeMillis()
+                        if (confirmKeyDownAtMs == null) {
+                            confirmKeyDownAtMs = nowMs
+                        }
+                        val action = confirmKeyLongPressState.onKeyDown(
+                            downTimeMs = nowMs,
+                            eventTimeMs = nowMs,
+                            repeatCount = nativeEvent.repeatCount,
+                        )
+                        logConfirmKey(
+                            "down repeat=${nativeEvent.repeatCount} nativeElapsed=" +
+                                "${nativeEvent.eventTime - nativeEvent.downTime} localElapsed=0 action=$action",
+                        )
+                        if (action == ConfirmKeyPressAction.LongClick) {
+                            confirmKeyLongClickJob?.cancel()
+                            confirmKeyLongClickJob = null
+                            handleConfirmKeyAction(action)
+                            return@onPreviewKeyEvent true
+                        }
+
+                        if (confirmKeyLongClickJob == null && nativeEvent.repeatCount == 0) {
                             confirmKeyLongClickJob = coroutineScope.launch {
                                 delay(CONFIRM_KEY_LONG_PRESS_DELAY_MS)
-                                confirmKeyLongClickHandled = true
-                                onLongClick()
+                                val timerAction = confirmKeyLongPressState.onTimerElapsed(
+                                    SystemClock.uptimeMillis(),
+                                )
+                                val localElapsedMs = SystemClock.uptimeMillis() - (confirmKeyDownAtMs ?: SystemClock.uptimeMillis())
+                                logConfirmKey("timer localElapsed=$localElapsedMs action=$timerAction")
+                                confirmKeyLongClickJob = null
+                                handleConfirmKeyAction(timerAction)
                             }
                         }
-                        confirmKeyLongClickHandled
+                        true
                     }
 
                     KeyEventType.KeyUp -> {
-                        val handled = confirmKeyLongClickHandled
+                        val nativeEvent = keyEvent.nativeKeyEvent
+                        val nowMs = SystemClock.uptimeMillis()
+                        val localElapsedMs = nowMs - (confirmKeyDownAtMs ?: nowMs)
+                        val action = confirmKeyLongPressState.onKeyUp(nowMs)
+                        logConfirmKey(
+                            "up nativeElapsed=${nativeEvent.eventTime - nativeEvent.downTime} " +
+                                "localElapsed=$localElapsedMs action=$action",
+                        )
                         confirmKeyLongClickJob?.cancel()
                         confirmKeyLongClickJob = null
-                        confirmKeyLongClickHandled = false
-                        handled
+                        confirmKeyDownAtMs = null
+                        handleConfirmKeyAction(action)
+                        true
                     }
 
                     else -> false
@@ -133,6 +194,9 @@ fun RtspCameraTile(
             request = request,
             rtspUrl = rtspUrl,
             showPlayerInfo = showPlayerInfo,
+            autoQualityDowngraded = autoQualityDowngraded,
+            onSoftwareDecoderInMosaicHd = onMosaicHdSoftwareDecoder,
+            onDecoderFailureInMosaicHd = onMosaicHdDecoderFailure,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -156,7 +220,7 @@ fun RtspCameraTile(
     }
 }
 
-private const val CONFIRM_KEY_LONG_PRESS_DELAY_MS = 1_200L
+private const val CONFIRM_KEY_LONG_PRESS_DELAY_MS = 400L
 
 private fun Key.isConfirmKey(): Boolean =
     this == Key.DirectionCenter ||

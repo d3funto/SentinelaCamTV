@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 data class MosaicUiState(
     val cameras: List<Camera> = emptyList(),
@@ -28,9 +29,16 @@ data class MosaicUiState(
     val cameraPendingDeletion: Camera? = null,
     val fullscreenCamera: Camera? = null,
     val streamQuality: StreamQuality = StreamQuality.SD,
+    val autoQualityOverrides: Map<String, StreamQuality> = emptyMap(),
     val transmissionMode: TransmissionMode = TransmissionMode.MENOR_LATENCIA,
     val preferences: PlayerUiPreferences = PlayerUiPreferences(),
-)
+) {
+    fun effectiveStreamQuality(cameraId: String): StreamQuality =
+        autoQualityOverrides[cameraId] ?: streamQuality
+
+    fun isAutoQualityDowngraded(cameraId: String): Boolean =
+        streamQuality == StreamQuality.HD && autoQualityOverrides[cameraId] == StreamQuality.SD
+}
 
 private data class MosaicCoreState(
     val cameras: List<Camera>,
@@ -55,6 +63,8 @@ class MosaicViewModel(
     private val selectedForSwapId = MutableStateFlow<String?>(null)
     private val cameraPendingDeletionId = MutableStateFlow<String?>(null)
     private val fullscreenCameraId = MutableStateFlow<String?>(null)
+    private val autoQualityOverrides = MutableStateFlow<Map<String, StreamQuality>>(emptyMap())
+    private val hdDecoderFailureCounts = mutableMapOf<String, Int>()
     private val cameraListState = cameraRepository.observeEnabledCameras()
         .map<List<Camera>, CameraListState> { cameras -> CameraListState.Loaded(cameras) }
         .onStart { emit(CameraListState.Loading) }
@@ -84,7 +94,10 @@ class MosaicViewModel(
         coreState,
         fullscreenCameraId,
         cameraPendingDeletionId,
-    ) { core, fullscreenId, pendingDeletionId ->
+        autoQualityOverrides,
+    ) { core, fullscreenId, pendingDeletionId, qualityOverrides ->
+        val validCameraIds = core.cameras.mapTo(mutableSetOf()) { it.id }
+        val validOverrides = qualityOverrides.filterKeys { it in validCameraIds }
         MosaicUiState(
             cameras = core.cameras,
             isLoading = core.isLoading,
@@ -95,6 +108,7 @@ class MosaicViewModel(
             cameraPendingDeletion = core.cameras.firstOrNull { it.id == pendingDeletionId },
             fullscreenCamera = core.cameras.firstOrNull { it.id == fullscreenId },
             streamQuality = core.preferences.mosaicStreamQuality,
+            autoQualityOverrides = validOverrides,
             transmissionMode = core.preferences.globalTransmissionMode,
             preferences = core.preferences,
         )
@@ -161,9 +175,55 @@ class MosaicViewModel(
     }
 
     fun toggleStreamQuality() {
+        hdDecoderFailureCounts.clear()
+        autoQualityOverrides.value = emptyMap()
         viewModelScope.launch {
             settingsRepository.setMosaicStreamQuality(state.value.streamQuality.next())
         }
+    }
+
+    fun fallbackCameraToSdFromSoftwareDecoder(cameraId: String, decoderName: String) {
+        applyAutoSdFallback(
+            cameraId = cameraId,
+            reason = "decoder software em HD no mosaico: $decoderName",
+        )
+    }
+
+    fun reportMosaicHdDecoderFailure(cameraId: String, reason: String) {
+        if (state.value.streamQuality != StreamQuality.HD) {
+            return
+        }
+        if (autoQualityOverrides.value[cameraId] == StreamQuality.SD) {
+            return
+        }
+
+        val failureCount = (hdDecoderFailureCounts[cameraId] ?: 0) + 1
+        hdDecoderFailureCounts[cameraId] = failureCount
+        Timber.tag("SentinelaPlayer").w(
+            "cameraId=$cameraId falha de decoder HD no mosaico $failureCount/" +
+                "${MosaicAutoQualityPolicy.DECODER_FAILURES_BEFORE_SD}: $reason",
+        )
+
+        if (MosaicAutoQualityPolicy.shouldFallbackToSdAfterDecoderFailures(failureCount)) {
+            applyAutoSdFallback(
+                cameraId = cameraId,
+                reason = "falhas repetidas de decoder em HD: $reason",
+            )
+        }
+    }
+
+    private fun applyAutoSdFallback(cameraId: String, reason: String) {
+        if (state.value.streamQuality != StreamQuality.HD) {
+            return
+        }
+        if (autoQualityOverrides.value[cameraId] == StreamQuality.SD) {
+            return
+        }
+        hdDecoderFailureCounts.remove(cameraId)
+        Timber.tag("SentinelaPlayer").w(
+            "cameraId=$cameraId HD no mosaico alternado para SD automaticamente: $reason",
+        )
+        autoQualityOverrides.value = autoQualityOverrides.value + (cameraId to StreamQuality.SD)
     }
 
     fun startReorderMode() {
@@ -191,6 +251,8 @@ class MosaicViewModel(
         if (fullscreenCameraId.value == cameraId) {
             fullscreenCameraId.value = null
         }
+        hdDecoderFailureCounts.remove(cameraId)
+        autoQualityOverrides.value = autoQualityOverrides.value - cameraId
         viewModelScope.launch {
             cameraRepository.deleteCamera(cameraId)
         }
