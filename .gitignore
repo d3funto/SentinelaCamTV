@@ -6,6 +6,7 @@
 .idea/
 .kotlin/
 local.properties
+gradle/gradle-daemon-jvm.properties
 
 # Build outputs
 build/
