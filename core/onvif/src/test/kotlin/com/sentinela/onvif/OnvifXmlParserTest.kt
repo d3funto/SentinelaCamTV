@@ -128,6 +128,22 @@ class OnvifXmlParserTest {
     }
 
     @Test
+    fun rejectsMixedCaseDoctypeBeforeParsing() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            OnvifXmlParser.parseCapabilities(
+                """
+                <!DocType root [
+                    <!ENTITY external SYSTEM "file:///etc/passwd">
+                ]>
+                <root>&external;</root>
+                """.trimIndent(),
+            )
+        }
+
+        assertEquals("DOCTYPE não é permitido em XML ONVIF.", error.message)
+    }
+
+    @Test
     fun rejectsOversizedXmlBeforeParsing() {
         val oversizedXml = "<root>${"a".repeat(OnvifXmlParser.MAX_XML_BYTES)}</root>"
 
